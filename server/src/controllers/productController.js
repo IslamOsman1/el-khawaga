@@ -10,7 +10,8 @@ export const getProducts = asyncHandler(async (req, res) => {
   const category = req.query.category ? { category: req.query.category } : {};
   const subcategory = req.query.subcategory ? { subcategory: req.query.subcategory } : {};
   const isDeal = req.query.deals === 'true' ? { isDeal: true } : {};
-  const query = { ...keyword, ...category, ...subcategory, ...isDeal };
+  const inAgencyCollection = req.query.agency === 'true' ? { inAgencyCollection: true } : {};
+  const query = { ...keyword, ...category, ...subcategory, ...isDeal, ...inAgencyCollection };
   const count = await Product.countDocuments(query);
   const products = await Product.find(query).sort({ createdAt: -1 }).limit(limit).skip((page - 1) * limit);
   res.json({ products, page, pages: Math.ceil(count / limit), count });
@@ -28,7 +29,10 @@ export const getCategories = asyncHandler(async (req, res) => {
 });
 
 export const createProduct = asyncHandler(async (req, res) => {
-  const data = req.body;
+  const data = {
+    ...req.body,
+    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? false
+  };
   let image = { url: '', publicId: '' };
   if (req.file) {
     const result = await uploadToCloudinary(req.file.buffer);
@@ -41,7 +45,10 @@ export const createProduct = asyncHandler(async (req, res) => {
 export const updateProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
-  Object.assign(product, req.body);
+  Object.assign(product, {
+    ...req.body,
+    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? product.inAgencyCollection
+  });
   if (req.file) {
     if (product.image?.publicId) await cloudinary.uploader.destroy(product.image.publicId);
     const result = await uploadToCloudinary(req.file.buffer);

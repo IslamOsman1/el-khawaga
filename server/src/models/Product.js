@@ -11,6 +11,7 @@ const productSchema = new mongoose.Schema({
   unit: { type: String, default: 'قطعة' },
   countInStock: { type: Number, required: true, min: 0, default: 0 },
   featured: { type: Boolean, default: false },
+  inAgencyCollection: { type: Boolean, default: false, index: true },
   isDeal: { type: Boolean, default: false },
   image: {
     url: { type: String, default: '' },

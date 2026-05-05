@@ -27,6 +27,7 @@ const emptyProduct = {
   unit: 'قطعة',
   countInStock: '',
   featured: false,
+  inAgencyCollection: false,
   isDeal: false
 };
 
@@ -326,6 +327,7 @@ export default function AdminDashboard() {
       unit: product.unit,
       countInStock: product.countInStock,
       featured: product.featured,
+      inAgencyCollection: product.inAgencyCollection,
       isDeal: product.isDeal
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
