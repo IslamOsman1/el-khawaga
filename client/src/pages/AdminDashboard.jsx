@@ -496,6 +496,7 @@ export default function AdminDashboard() {
           <div className="admin-toggle-row">
             <label className="admin-toggle-pill"><input type="checkbox" name="featured" checked={productForm.featured} onChange={changeProduct} /> منتج مميز</label>
             <label className="admin-toggle-pill"><input type="checkbox" name="isDeal" checked={productForm.isDeal} onChange={changeProduct} /> ضمن العروض</label>
+            <label className="admin-toggle-pill"><input type="checkbox" name="inAgencyCollection" checked={productForm.inAgencyCollection} onChange={changeProduct} /> اضف الى منتجات الوكاله</label>
             <label className="admin-file-pill">
               <input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} />
               <span>{image ? image.name : 'اختيار صورة المنتج'}</span>
