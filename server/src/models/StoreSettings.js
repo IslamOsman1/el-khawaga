@@ -75,9 +75,7 @@ const storeSettingsSchema = new mongoose.Schema({
     stripeSecretKey: { type: String, default: '' }
   },
   integrations: {
-    googleClientId: { type: String, default: '' },
-    facebookAppId: { type: String, default: '' },
-    facebookAppSecret: { type: String, default: '' }
+    googleClientId: { type: String, default: '' }
   }
 }, { timestamps: true });
 

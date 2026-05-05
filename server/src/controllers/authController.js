@@ -21,8 +21,6 @@ const buildAuthResponse = (user) => ({
 
 const randomPassword = () => crypto.randomBytes(24).toString('hex');
 
-const getFacebookAppToken = (appId, appSecret) => `${appId}|${appSecret}`;
-
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password, phone } = req.body;
   const exists = await User.findOne({ email });
@@ -83,60 +81,6 @@ export const googleLogin = asyncHandler(async (req, res) => {
     if (!user.googleId) user.googleId = payload.sub;
     if (!user.avatar && payload.picture) user.avatar = payload.picture;
     if (!user.name && payload.name) user.name = payload.name;
-    await user.save();
-  }
-
-  res.json(buildAuthResponse(user));
-});
-
-export const facebookLogin = asyncHandler(async (req, res) => {
-  const { accessToken } = req.body;
-  if (!accessToken) return res.status(400).json({ message: 'بيانات Facebook غير موجودة' });
-
-  const settings = await ensureStoreSettings();
-  const facebookAppId = settings.integrations?.facebookAppId || process.env.FACEBOOK_APP_ID;
-  const facebookAppSecret = settings.integrations?.facebookAppSecret || process.env.FACEBOOK_APP_SECRET;
-
-  if (!facebookAppId || !facebookAppSecret) {
-    return res.status(400).json({ message: 'تسجيل الدخول بفيس بوك غير مفعل من لوحة التحكم' });
-  }
-
-  const appToken = getFacebookAppToken(facebookAppId, facebookAppSecret);
-  const debugResponse = await fetch(`https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`);
-  const debugData = await debugResponse.json();
-  const tokenInfo = debugData?.data;
-
-  if (!debugResponse.ok || !tokenInfo?.is_valid || tokenInfo.app_id !== facebookAppId) {
-    return res.status(400).json({ message: 'تعذر التحقق من حساب Facebook' });
-  }
-
-  const profileResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`);
-  const profile = await profileResponse.json();
-
-  if (!profileResponse.ok || !profile?.id || !profile?.email) {
-    return res.status(400).json({ message: 'تعذر قراءة بيانات حساب Facebook، تأكد من صلاحية البريد الإلكتروني' });
-  }
-
-  let user = await User.findOne({
-    $or: [
-      { email: profile.email },
-      { facebookId: profile.id }
-    ]
-  });
-
-  if (!user) {
-    user = await User.create({
-      name: profile.name || profile.email.split('@')[0],
-      email: profile.email,
-      password: randomPassword(),
-      phone: '',
-      facebookId: profile.id,
-      avatar: profile.picture?.data?.url || ''
-    });
-  } else {
-    if (!user.facebookId) user.facebookId = profile.id;
-    if (!user.avatar && profile.picture?.data?.url) user.avatar = profile.picture.data.url;
-    if (!user.name && profile.name) user.name = profile.name;
     await user.save();
   }
 

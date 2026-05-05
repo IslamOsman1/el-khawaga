@@ -81,9 +81,7 @@ const defaultSettingsForm = {
     stripeSecretKey: ''
   },
   integrations: {
-    googleClientId: '',
-    facebookAppId: '',
-    facebookAppSecret: ''
+    googleClientId: ''
   }
 };
 
@@ -563,8 +561,6 @@ export default function AdminDashboard() {
               <div className="admin-setting-card-head"><Settings2 size={18} /><strong>تسجيل الدخول الاجتماعي</strong></div>
               <div className="admin-dashboard-form-grid">
                 <Field label="Google Client ID"><input value={settingsForm.integrations.googleClientId} onChange={(event) => changeSettingsField(['integrations', 'googleClientId'], event.target.value)} placeholder="Google Client ID" /></Field>
-                <Field label="Facebook App ID"><input value={settingsForm.integrations.facebookAppId} onChange={(event) => changeSettingsField(['integrations', 'facebookAppId'], event.target.value)} placeholder="Facebook App ID" /></Field>
-                <Field label="Facebook App Secret"><input value={settingsForm.integrations.facebookAppSecret} onChange={(event) => changeSettingsField(['integrations', 'facebookAppSecret'], event.target.value)} placeholder="Facebook App Secret" /></Field>
               </div>
             </article>
           </div>

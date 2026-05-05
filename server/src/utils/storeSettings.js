@@ -147,6 +147,5 @@ export const serializePublicSettings = (settings) => ({
     onlineProvider: settings.payment?.onlineProvider,
     currency: settings.payment?.currency
   },
-  googleClientId: settings.integrations?.googleClientId || '',
-  facebookAppId: settings.integrations?.facebookAppId || ''
+  googleClientId: settings.integrations?.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
 });

@@ -13,7 +13,7 @@ The repository is split into:
 - Home slider, featured categories, offers, wishlist, profile, orders, and category pages
 - Admin dashboard for products, category groups, sections, banners, featured categories, store settings, payment settings, and orders
 - Image uploads through Cloudinary
-- Social login with Google and Facebook
+- Social login with Google
 - Online payment support with Stripe Checkout
 - Central store settings that control large parts of the frontend from the dashboard
 
@@ -24,7 +24,7 @@ The repository is split into:
 - Database: MongoDB
 - Media: Cloudinary
 - Payments: Stripe
-- Auth: JWT + Google + Facebook
+- Auth: JWT + Google
 
 ## Project Structure
 
@@ -224,7 +224,7 @@ Before the first production deploy, fill in the prompted environment variables i
 - Set `VITE_API_URL` to the real backend API URL
 - Configure Cloudinary production credentials
 - Configure Stripe production keys
-- Add your production domains in Google and Facebook app settings
+- Add your production domain in Google app settings
 - Do not commit real `.env` files
 
 ## Useful Commands

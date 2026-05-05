@@ -32,12 +32,6 @@ export function AuthProvider({ children }) {
     toast.success('تم تسجيل الدخول بواسطة Google');
   };
 
-  const facebookLogin = async (accessToken) => {
-    const { data } = await api.post('/auth/facebook', { accessToken });
-    saveSession(data);
-    toast.success('تم تسجيل الدخول بواسطة Facebook');
-  };
-
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -54,7 +48,7 @@ export function AuthProvider({ children }) {
     api.get('/auth/profile').catch(() => logout());
   }, []);
 
-  return <AuthContext.Provider value={{ user, login, register, googleLogin, facebookLogin, logout }}>
+  return <AuthContext.Provider value={{ user, login, register, googleLogin, logout }}>
     {children}
   </AuthContext.Provider>;
 }

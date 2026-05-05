@@ -459,7 +459,6 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
 .social-icon-btn{width:52px;height:52px;border-radius:50%;border:1px solid rgba(222,183,122,.16);display:grid;place-items:center;color:#ffffff;box-shadow:0 10px 22px rgba(43,31,16,.12);transition:.2s}
 .social-icon-btn:hover{transform:translateY(-2px)}
 .google-social-btn{background:#ffffff;color:#1f1f1f}
-.facebook-social-btn{background:#1877f2;color:#ffffff}
 .social-icon-disabled{opacity:.72}
 .google-icon-mark{font-size:1.25rem;font-weight:900;line-height:1;background:linear-gradient(90deg,#4285f4 0 25%,#ea4335 25% 50%,#fbbc05 50% 75%,#34a853 75% 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .checkout-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
