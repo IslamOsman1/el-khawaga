@@ -5,6 +5,7 @@ import {
   Package,
   Palette,
   Save,
+  Search,
   Settings2,
   ShoppingBag,
   Store,
@@ -33,9 +34,7 @@ const defaultCategoryGroups = [
   {
     title: '',
     subtitle: '',
-    sections: [
-      { title: '', sourceCategory: '' }
-    ]
+    sections: [{ title: '', sourceCategory: '' }]
   }
 ];
 
@@ -94,6 +93,8 @@ const dashboardSections = [
   { id: 'orders', label: 'الطلبات', icon: ShoppingBag }
 ];
 
+const normalizeText = (value) => String(value || '').toLowerCase();
+
 const normalizeSettings = (data) => ({
   ...defaultSettingsForm,
   ...data,
@@ -102,14 +103,8 @@ const normalizeSettings = (data) => ({
     ...(data.about || {})
   },
   home: {
-    heroSlides: [
-      ...(data.home?.heroSlides || []),
-      ...defaultSettingsForm.home.heroSlides
-    ].slice(0, 3),
-    featuredCategories: [
-      ...(data.home?.featuredCategories || []),
-      ...defaultSettingsForm.home.featuredCategories
-    ].slice(0, 4)
+    heroSlides: [...(data.home?.heroSlides || []), ...defaultSettingsForm.home.heroSlides].slice(0, 3),
+    featuredCategories: [...(data.home?.featuredCategories || []), ...defaultSettingsForm.home.featuredCategories].slice(0, 4)
   },
   categoryGroups: data.categoryGroups?.length ? data.categoryGroups : defaultCategoryGroups,
   checkout: {
@@ -133,6 +128,13 @@ function Field({ label, children }) {
   </label>;
 }
 
+function SearchBox({ value, onChange, placeholder }) {
+  return <label className="admin-search-box">
+    <Search size={18} />
+    <input value={value} onChange={onChange} placeholder={placeholder} />
+  </label>;
+}
+
 export default function AdminDashboard() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -144,13 +146,24 @@ export default function AdminDashboard() {
   const [uploadingBannerIndex, setUploadingBannerIndex] = useState(null);
   const [uploadingFeaturedCategoryIndex, setUploadingFeaturedCategoryIndex] = useState(null);
   const [activeSection, setActiveSection] = useState('products');
+  const [searchTerms, setSearchTerms] = useState({
+    products: '',
+    categories: '',
+    store: '',
+    content: '',
+    payments: '',
+    orders: ''
+  });
   const { refresh } = useStoreSettings();
 
   const categoryGroups = useMemo(() => getCategoryGroups(settingsForm), [settingsForm]);
   const sourceCategories = useMemo(() => getSourceCategories(categoryGroups), [categoryGroups]);
+
   const availableSections = useMemo(() => {
     if (!productForm.category) return [];
-    return categoryGroups.flatMap((group) => group.sections || []).filter((section) => section.sourceCategory === productForm.category);
+    return categoryGroups
+      .flatMap((group) => group.sections || [])
+      .filter((section) => section.sourceCategory === productForm.category);
   }, [categoryGroups, productForm.category]);
 
   const stats = useMemo(() => ({
@@ -159,6 +172,105 @@ export default function AdminDashboard() {
     openOrders: orders.filter((order) => order.status !== 'تم التسليم' && order.status !== 'ملغي').length,
     totalProducts: products.length
   }), [orders, products]);
+
+  const filteredProducts = useMemo(() => {
+    const term = normalizeText(searchTerms.products);
+    return [...products]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .filter((product) => !term || [
+        product.name,
+        product.description,
+        product.category,
+        product.subcategory,
+        product.unit
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [products, searchTerms.products]);
+
+  const filteredCategoryGroups = useMemo(() => {
+    const term = normalizeText(searchTerms.categories);
+    return settingsForm.categoryGroups
+      .map((group, index) => ({ group, index }))
+      .filter(({ group }) => !term || [
+        group.title,
+        group.subtitle,
+        ...(group.sections || []).flatMap((section) => [section.title, section.sourceCategory])
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [settingsForm.categoryGroups, searchTerms.categories]);
+
+  const filteredHeroSlides = useMemo(() => {
+    const term = normalizeText(searchTerms.content);
+    return settingsForm.home.heroSlides
+      .map((slide, index) => ({ slide, index }))
+      .filter(({ slide }) => !term || [
+        slide.title,
+        slide.tag,
+        slide.note,
+        slide.image,
+        slide.link
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [settingsForm.home.heroSlides, searchTerms.content]);
+
+  const filteredFeaturedCategories = useMemo(() => {
+    const term = normalizeText(searchTerms.content);
+    return settingsForm.home.featuredCategories
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => !term || [
+        item.title,
+        item.subtitle,
+        item.category,
+        item.image
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [settingsForm.home.featuredCategories, searchTerms.content]);
+
+  const filteredOrders = useMemo(() => {
+    const term = normalizeText(searchTerms.orders);
+    return [...orders]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .filter((order) => !term || [
+        order.user?.name,
+        order.paymentMethod,
+        order.status,
+        order.totalPrice
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [orders, searchTerms.orders]);
+
+  const visibleStoreCards = useMemo(() => {
+    const term = normalizeText(searchTerms.store);
+    return {
+      identity: !term || [
+        'الهوية الأساسية',
+        settingsForm.storeName,
+        settingsForm.storeTagline,
+        settingsForm.supportPhone,
+        settingsForm.supportEmail,
+        settingsForm.address,
+        settingsForm.workingHours,
+        settingsForm.whatsapp
+      ].some((value) => normalizeText(value).includes(term)),
+      shipping: !term || [
+        'الشحن والتوصيل',
+        settingsForm.checkout.shippingFee,
+        settingsForm.checkout.freeShippingThreshold
+      ].some((value) => normalizeText(value).includes(term))
+    };
+  }, [searchTerms.store, settingsForm]);
+
+  const visiblePaymentCards = useMemo(() => {
+    const term = normalizeText(searchTerms.payments);
+    return {
+      payment: !term || [
+        'الدفع',
+        settingsForm.payment.currency,
+        settingsForm.payment.onlineProvider,
+        settingsForm.payment.stripePublishableKey,
+        settingsForm.payment.stripeSecretKey
+      ].some((value) => normalizeText(value).includes(term)),
+      social: !term || [
+        'تسجيل الدخول الاجتماعي',
+        settingsForm.integrations.googleClientId
+      ].some((value) => normalizeText(value).includes(term))
+    };
+  }, [searchTerms.payments, settingsForm]);
 
   const load = async () => {
     const [productsResponse, ordersResponse, settingsResponse] = await Promise.all([
@@ -176,13 +288,15 @@ export default function AdminDashboard() {
     load().catch(() => toast.error('تعذر تحميل لوحة التحكم'));
   }, []);
 
+  const changeSearch = (key, value) => {
+    setSearchTerms((current) => ({ ...current, [key]: value }));
+  };
+
   const changeProduct = (event) => {
     const { name, value, type, checked } = event.target;
     setProductForm((current) => {
       const next = { ...current, [name]: type === 'checkbox' ? checked : value };
-      if (name === 'category') {
-        next.subcategory = '';
-      }
+      if (name === 'category') next.subcategory = '';
       return next;
     });
   };
@@ -255,7 +369,7 @@ export default function AdminDashboard() {
   const addCategoryGroup = () => {
     setSettingsForm((current) => ({
       ...current,
-      categoryGroups: [...current.categoryGroups, { title: '', subtitle: '', sections: [{ title: '', sourceCategory: '' }] }]
+      categoryGroups: [{ title: '', subtitle: '', sections: [{ title: '', sourceCategory: '' }] }, ...current.categoryGroups]
     }));
   };
 
@@ -269,7 +383,7 @@ export default function AdminDashboard() {
   const addSectionToGroup = (groupIndex) => {
     setSettingsForm((current) => {
       const next = JSON.parse(JSON.stringify(current));
-      next.categoryGroups[groupIndex].sections.push({ title: '', sourceCategory: '' });
+      next.categoryGroups[groupIndex].sections.unshift({ title: '', sourceCategory: '' });
       return next;
     });
   };
@@ -364,6 +478,7 @@ export default function AdminDashboard() {
             <p>أنشئ منتجات جديدة أو عدّل الحالية مع ربطها بالفئات والأقسام الموجودة.</p>
           </div>
         </div>
+        <SearchBox value={searchTerms.products} onChange={(event) => changeSearch('products', event.target.value)} placeholder="ابحث عن منتج بالاسم أو الفئة أو القسم..." />
 
         <form onSubmit={submitProduct} className="admin-dashboard-form">
           <div className="admin-dashboard-form-grid">
@@ -401,6 +516,40 @@ export default function AdminDashboard() {
             <span>{editing ? 'حفظ التعديل' : 'إضافة المنتج'}</span>
           </button>
         </form>
+
+        <div className="admin-table-card">
+          <div className="admin-section-head compact">
+            <div>
+              <h3>المنتجات الحالية</h3>
+              <p>{filteredProducts.length} عنصر</p>
+            </div>
+          </div>
+          <div className="table-wrap admin-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الفئة</th>
+                  <th>القسم</th>
+                  <th>السعر</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((product) => <tr key={product._id}>
+                  <td>{product.name}</td>
+                  <td>{product.category}</td>
+                  <td>{product.subcategory || '-'}</td>
+                  <td>{product.price} ج.م</td>
+                  <td>
+                    <button type="button" className="table-action-btn" onClick={() => editProduct(product)}>تعديل</button>
+                    <button type="button" className="table-action-btn danger" onClick={() => removeProduct(product._id)}>حذف</button>
+                  </td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section className={`admin-dashboard-panel${activeSection === 'categories' ? ' active' : ''}`}>
@@ -411,10 +560,11 @@ export default function AdminDashboard() {
           </div>
           <button type="button" className="secondary-btn" onClick={addCategoryGroup}>إضافة فئة رئيسية</button>
         </div>
+        <SearchBox value={searchTerms.categories} onChange={(event) => changeSearch('categories', event.target.value)} placeholder="ابحث عن فئة أو قسم..." />
 
         <form className="admin-dashboard-form" onSubmit={saveSettings}>
           <div className="admin-category-groups-stack">
-            {settingsForm.categoryGroups.map((group, groupIndex) => <article key={`group-${groupIndex}`} className="admin-setting-card">
+            {filteredCategoryGroups.map(({ group, index: groupIndex }) => <article key={`group-${groupIndex}`} className="admin-setting-card">
               <div className="admin-section-head compact">
                 <div>
                   <h3>الفئة الرئيسية {groupIndex + 1}</h3>
@@ -457,9 +607,10 @@ export default function AdminDashboard() {
 
       <section className={`admin-dashboard-panel${activeSection === 'store' ? ' active' : ''}`}>
         <div className="admin-section-head"><div><h2>إعدادات المتجر</h2><p>عدّل بيانات المتجر الأساسية ووسائل التواصل والشحن.</p></div><Store size={18} /></div>
+        <SearchBox value={searchTerms.store} onChange={(event) => changeSearch('store', event.target.value)} placeholder="ابحث داخل إعدادات المتجر..." />
         <form className="admin-dashboard-form" onSubmit={saveSettings}>
           <div className="admin-settings-cluster">
-            <article className="admin-setting-card">
+            {visibleStoreCards.identity && <article className="admin-setting-card">
               <div className="admin-setting-card-head"><Settings2 size={18} /><strong>الهوية الأساسية</strong></div>
               <div className="admin-dashboard-form-grid">
                 <Field label="اسم المتجر"><input value={settingsForm.storeName} onChange={(event) => changeSettingsField(['storeName'], event.target.value)} placeholder="اسم المتجر" /></Field>
@@ -470,21 +621,22 @@ export default function AdminDashboard() {
                 <Field label="مواعيد العمل"><input value={settingsForm.workingHours} onChange={(event) => changeSettingsField(['workingHours'], event.target.value)} placeholder="مواعيد العمل" /></Field>
                 <Field label="رقم واتساب"><input value={settingsForm.whatsapp} onChange={(event) => changeSettingsField(['whatsapp'], event.target.value)} placeholder="واتساب" /></Field>
               </div>
-            </article>
-            <article className="admin-setting-card">
+            </article>}
+            {visibleStoreCards.shipping && <article className="admin-setting-card">
               <div className="admin-setting-card-head"><Truck size={18} /><strong>الشحن والتوصيل</strong></div>
               <div className="admin-dashboard-form-grid two-cols">
                 <Field label="رسوم الشحن"><input type="number" value={settingsForm.checkout.shippingFee} onChange={(event) => changeSettingsField(['checkout', 'shippingFee'], Number(event.target.value))} placeholder="رسوم الشحن" /></Field>
                 <Field label="حد الشحن المجاني"><input type="number" value={settingsForm.checkout.freeShippingThreshold} onChange={(event) => changeSettingsField(['checkout', 'freeShippingThreshold'], Number(event.target.value))} placeholder="حد الشحن المجاني" /></Field>
               </div>
-            </article>
+            </article>}
           </div>
           <button className="primary-btn admin-submit-btn" disabled={settingsSaving}><Save size={16} /><span>{settingsSaving ? 'جارٍ الحفظ...' : 'حفظ إعدادات المتجر'}</span></button>
         </form>
       </section>
 
       <section className={`admin-dashboard-panel${activeSection === 'content' ? ' active' : ''}`}>
-        <div className="admin-section-head"><div><h2>المحتوى والبنرات</h2><p>تحكم في محتوى صفحة من نحن وبانرات السلايدر الرئيسية.</p></div><Palette size={18} /></div>
+        <div className="admin-section-head"><div><h2>المحتوى والبنرات</h2><p>تحكم في محتوى صفحة من نحن وبنرات السلايدر الرئيسية.</p></div><Palette size={18} /></div>
+        <SearchBox value={searchTerms.content} onChange={(event) => changeSearch('content', event.target.value)} placeholder="ابحث عن بانر أو فئة مميزة أو نص..." />
         <form className="admin-dashboard-form" onSubmit={saveSettings}>
           <div className="admin-settings-cluster">
             <article className="admin-setting-card">
@@ -498,9 +650,9 @@ export default function AdminDashboard() {
               </div>
             </article>
             <article className="admin-setting-card">
-              <div className="admin-setting-card-head"><Palette size={18} /><strong>بانرات الرئيسية</strong></div>
+              <div className="admin-setting-card-head"><Palette size={18} /><strong>بنرات الرئيسية</strong></div>
               <div className="admin-slides-grid enhanced">
-                {settingsForm.home.heroSlides.map((slide, index) => <div key={`slide-${index}`} className="admin-slide-card refined">
+                {filteredHeroSlides.map(({ slide, index }) => <div key={`slide-${index}`} className="admin-slide-card refined">
                   <strong>بانر {index + 1}</strong>
                   <Field label="العنوان"><input value={slide.title} onChange={(event) => changeSettingsField(['home', 'heroSlides', index, 'title'], event.target.value)} placeholder="العنوان" /></Field>
                   <Field label="الشارة"><input value={slide.tag} onChange={(event) => changeSettingsField(['home', 'heroSlides', index, 'tag'], event.target.value)} placeholder="الشارة" /></Field>
@@ -517,7 +669,7 @@ export default function AdminDashboard() {
             <article className="admin-setting-card">
               <div className="admin-setting-card-head"><FolderTree size={18} /><strong>الفئات المميزة</strong></div>
               <div className="admin-slides-grid enhanced">
-                {settingsForm.home.featuredCategories.map((item, index) => <div key={`featured-category-${index}`} className="admin-slide-card refined">
+                {filteredFeaturedCategories.map(({ item, index }) => <div key={`featured-category-${index}`} className="admin-slide-card refined">
                   <strong>فئة مميزة {index + 1}</strong>
                   <Field label="العنوان"><input value={item.title} onChange={(event) => changeSettingsField(['home', 'featuredCategories', index, 'title'], event.target.value)} placeholder="العنوان" /></Field>
                   <Field label="الوصف المختصر"><input value={item.subtitle} onChange={(event) => changeSettingsField(['home', 'featuredCategories', index, 'subtitle'], event.target.value)} placeholder="الوصف المختصر" /></Field>
@@ -542,9 +694,10 @@ export default function AdminDashboard() {
 
       <section className={`admin-dashboard-panel${activeSection === 'payments' ? ' active' : ''}`}>
         <div className="admin-section-head"><div><h2>الدفع والتكاملات</h2><p>فعّل طرق الدفع واربط تسجيل الدخول الاجتماعي من هذه المنطقة.</p></div><CreditCard size={18} /></div>
+        <SearchBox value={searchTerms.payments} onChange={(event) => changeSearch('payments', event.target.value)} placeholder="ابحث داخل إعدادات الدفع..." />
         <form className="admin-dashboard-form" onSubmit={saveSettings}>
           <div className="admin-settings-cluster">
-            <article className="admin-setting-card">
+            {visiblePaymentCards.payment && <article className="admin-setting-card">
               <div className="admin-setting-card-head"><CreditCard size={18} /><strong>الدفع</strong></div>
               <div className="admin-dashboard-form-grid">
                 <Field label="العملة"><input value={settingsForm.payment.currency} onChange={(event) => changeSettingsField(['payment', 'currency'], event.target.value)} placeholder="العملة" /></Field>
@@ -556,13 +709,13 @@ export default function AdminDashboard() {
                 <label className="admin-toggle-pill"><input type="checkbox" checked={settingsForm.payment.cashOnDeliveryEnabled} onChange={(event) => changeSettingsField(['payment', 'cashOnDeliveryEnabled'], event.target.checked)} /> تفعيل الدفع عند الاستلام</label>
                 <label className="admin-toggle-pill"><input type="checkbox" checked={settingsForm.payment.onlinePaymentEnabled} onChange={(event) => changeSettingsField(['payment', 'onlinePaymentEnabled'], event.target.checked)} /> تفعيل الدفع الأونلاين</label>
               </div>
-            </article>
-            <article className="admin-setting-card">
+            </article>}
+            {visiblePaymentCards.social && <article className="admin-setting-card">
               <div className="admin-setting-card-head"><Settings2 size={18} /><strong>تسجيل الدخول الاجتماعي</strong></div>
               <div className="admin-dashboard-form-grid">
                 <Field label="Google Client ID"><input value={settingsForm.integrations.googleClientId} onChange={(event) => changeSettingsField(['integrations', 'googleClientId'], event.target.value)} placeholder="Google Client ID" /></Field>
               </div>
-            </article>
+            </article>}
           </div>
           <button className="primary-btn admin-submit-btn" disabled={settingsSaving}><Save size={16} /><span>{settingsSaving ? 'جارٍ الحفظ...' : 'حفظ إعدادات الدفع والتكامل'}</span></button>
         </form>
@@ -570,6 +723,7 @@ export default function AdminDashboard() {
 
       <section className={`admin-dashboard-panel${activeSection === 'orders' ? ' active' : ''}`}>
         <div className="admin-section-head"><div><h2>إدارة الطلبات</h2><p>تابع الطلبات وغيّر حالتها بسرعة من جدول واحد.</p></div><ShoppingBag size={18} /></div>
+        <SearchBox value={searchTerms.orders} onChange={(event) => changeSearch('orders', event.target.value)} placeholder="ابحث عن طلب باسم العميل أو الحالة..." />
         <div className="admin-table-card">
           <div className="table-wrap admin-table-wrap">
             <table>
@@ -583,7 +737,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => <tr key={order._id}>
+                {filteredOrders.map((order) => <tr key={order._id}>
                   <td>{order.user?.name}</td>
                   <td>{order.totalPrice} ج.م</td>
                   <td>{order.isPaid ? 'مدفوع' : order.paymentMethod}</td>
