@@ -45,10 +45,9 @@ export const googleLogin = asyncHandler(async (req, res) => {
   const { credential } = req.body;
   if (!credential) return res.status(400).json({ message: 'بيانات Google غير موجودة' });
 
-  const settings = await ensureStoreSettings();
-  const googleClientId = settings.integrations?.googleClientId || process.env.GOOGLE_CLIENT_ID;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
   if (!googleClientId) {
-    return res.status(400).json({ message: 'تسجيل الدخول بجوجل غير مفعل من لوحة التحكم' });
+    return res.status(400).json({ message: 'تسجيل الدخول بجوجل غير مفعل من إعدادات البيئة' });
   }
 
   const ticket = await googleClient.verifyIdToken({

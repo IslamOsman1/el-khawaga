@@ -78,9 +78,6 @@ const defaultSettingsForm = {
     currency: 'egp',
     stripePublishableKey: '',
     stripeSecretKey: ''
-  },
-  integrations: {
-    googleClientId: ''
   }
 };
 
@@ -114,10 +111,6 @@ const normalizeSettings = (data) => ({
   payment: {
     ...defaultSettingsForm.payment,
     ...(data.payment || {})
-  },
-  integrations: {
-    ...defaultSettingsForm.integrations,
-    ...(data.integrations || {})
   }
 });
 
@@ -264,10 +257,6 @@ export default function AdminDashboard() {
         settingsForm.payment.onlineProvider,
         settingsForm.payment.stripePublishableKey,
         settingsForm.payment.stripeSecretKey
-      ].some((value) => normalizeText(value).includes(term)),
-      social: !term || [
-        'تسجيل الدخول الاجتماعي',
-        settingsForm.integrations.googleClientId
       ].some((value) => normalizeText(value).includes(term))
     };
   }, [searchTerms.payments, settingsForm]);
@@ -693,7 +682,7 @@ export default function AdminDashboard() {
       </section>
 
       <section className={`admin-dashboard-panel${activeSection === 'payments' ? ' active' : ''}`}>
-        <div className="admin-section-head"><div><h2>الدفع والتكاملات</h2><p>فعّل طرق الدفع واربط تسجيل الدخول الاجتماعي من هذه المنطقة.</p></div><CreditCard size={18} /></div>
+        <div className="admin-section-head"><div><h2>الدفع والتكاملات</h2><p>فعّل طرق الدفع من اللوحة، بينما يعمل Google Login الآن من متغيرات البيئة مباشرة.</p></div><CreditCard size={18} /></div>
         <SearchBox value={searchTerms.payments} onChange={(event) => changeSearch('payments', event.target.value)} placeholder="ابحث داخل إعدادات الدفع..." />
         <form className="admin-dashboard-form" onSubmit={saveSettings}>
           <div className="admin-settings-cluster">
@@ -708,12 +697,6 @@ export default function AdminDashboard() {
               <div className="admin-toggle-row">
                 <label className="admin-toggle-pill"><input type="checkbox" checked={settingsForm.payment.cashOnDeliveryEnabled} onChange={(event) => changeSettingsField(['payment', 'cashOnDeliveryEnabled'], event.target.checked)} /> تفعيل الدفع عند الاستلام</label>
                 <label className="admin-toggle-pill"><input type="checkbox" checked={settingsForm.payment.onlinePaymentEnabled} onChange={(event) => changeSettingsField(['payment', 'onlinePaymentEnabled'], event.target.checked)} /> تفعيل الدفع الأونلاين</label>
-              </div>
-            </article>}
-            {visiblePaymentCards.social && <article className="admin-setting-card">
-              <div className="admin-setting-card-head"><Settings2 size={18} /><strong>تسجيل الدخول الاجتماعي</strong></div>
-              <div className="admin-dashboard-form-grid">
-                <Field label="Google Client ID"><input value={settingsForm.integrations.googleClientId} onChange={(event) => changeSettingsField(['integrations', 'googleClientId'], event.target.value)} placeholder="Google Client ID" /></Field>
               </div>
             </article>}
           </div>
