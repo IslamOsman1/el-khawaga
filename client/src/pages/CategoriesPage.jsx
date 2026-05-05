@@ -6,13 +6,6 @@ import ProductCard from '../components/ProductCard.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
 import { getCategoryGroups, getSourceCategories } from '../utils/categoryHelpers.js';
 
-const fallbackProducts = [
-  { _id: 'demo-1', name: 'طماطم طازجة', category: 'خضار', subcategory: 'خضار طبخ', unit: '1 كجم', price: 18, oldPrice: 22, countInStock: 12, isDeal: true },
-  { _id: 'demo-2', name: 'تفاح أحمر', category: 'فاكهة', subcategory: 'فاكهة يومية', unit: '1 كجم', price: 55, oldPrice: 0, countInStock: 10 },
-  { _id: 'demo-3', name: 'لبن كامل الدسم', category: 'ألبان', subcategory: 'لبن وحليب', unit: '1 لتر', price: 42, oldPrice: 48, countInStock: 9, isDeal: true },
-  { _id: 'demo-4', name: 'أرز مصري', category: 'بقالة', subcategory: 'أرز ومكرونة', unit: '1 كجم', price: 32, oldPrice: 36, countInStock: 20 }
-];
-
 export default function CategoriesPage() {
   const { settings } = useStoreSettings();
   const categoryGroups = useMemo(() => getCategoryGroups(settings), [settings]);
@@ -25,8 +18,8 @@ export default function CategoriesPage() {
   useEffect(() => {
     setLoading(true);
     api.get('/products?limit=100')
-      .then(({ data }) => setProducts(Array.isArray(data.products) && data.products.length ? data.products : fallbackProducts))
-      .catch(() => setProducts(fallbackProducts))
+      .then(({ data }) => setProducts(Array.isArray(data.products) ? data.products : []))
+      .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -72,7 +65,7 @@ export default function CategoriesPage() {
             <button
               type="button"
               className="mini-category-trigger"
-              onClick={() => setOpenGroup((current) => current === group.title ? '' : group.title)}
+              onClick={() => setOpenGroup((current) => (current === group.title ? '' : group.title))}
             >
               <span className="mini-category-label">
                 <span>{group.title}</span>

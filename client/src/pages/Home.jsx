@@ -5,16 +5,9 @@ import api from '../api/api.js';
 import ProductCard from '../components/ProductCard.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
 
-const demoProducts = [
-  { _id: 'demo-1', name: 'آيس كريم فراولة', category: 'عروض', unit: '75 جم', price: 18, oldPrice: 25, countInStock: 12, isDeal: true },
-  { _id: 'demo-2', name: 'آيس كريم مانجو', category: 'الأكثر طلبًا', unit: '75 جم', price: 20, oldPrice: 28, countInStock: 10, isDeal: true },
-  { _id: 'demo-3', name: 'ليمون طازج', category: 'فاكهة', unit: '1 كجم', price: 35, oldPrice: 0, countInStock: 20 },
-  { _id: 'demo-4', name: 'لبن كامل الدسم', category: 'ألبان', unit: '1 لتر', price: 42, oldPrice: 48, countInStock: 9, isDeal: true }
-];
-
 const categoryCards = [
   { title: 'الخضار الطازج', category: 'خضار', subtitle: 'اختيار يومي من السوق', emoji: '🥬' },
-  { title: 'الفاكهة', category: 'فاكهة', subtitle: 'جودة ممتازة طوال اليوم', emoji: '🍊' },
+  { title: 'الفاكهة', category: 'فاكهه', subtitle: 'جودة ممتازة طوال اليوم', emoji: '🍊' },
   { title: 'الألبان', category: 'ألبان', subtitle: 'منتجات مبردة بعناية', emoji: '🥛' },
   { title: 'البقالة', category: 'بقالة', subtitle: 'كل احتياجات البيت', emoji: '🛒' }
 ];
@@ -58,8 +51,8 @@ export default function Home() {
   useEffect(() => {
     setLoading(true);
     api.get('/products')
-      .then(({ data }) => setProducts(Array.isArray(data.products) && data.products.length ? data.products : demoProducts))
-      .catch(() => setProducts(demoProducts))
+      .then(({ data }) => setProducts(Array.isArray(data.products) ? data.products : []))
+      .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -100,7 +93,7 @@ export default function Home() {
   }, [heroSlides]);
 
   useEffect(() => {
-    setActiveSlide((current) => current >= heroSlides.length ? 0 : current);
+    setActiveSlide((current) => (current >= heroSlides.length ? 0 : current));
   }, [heroSlides]);
 
   const slide = heroSlides[activeSlide] || fallbackSlides[0];
@@ -175,6 +168,7 @@ export default function Home() {
         {!!bestSellers.length && <section className="product-section">
           <div className="products-grid">{bestSellers.map((product) => <ProductCard key={`best-${product._id}`} product={product} />)}</div>
         </section>}
+        {!bestSellers.length && <p className="muted">لا توجد منتجات معلمة حاليًا لهذا القسم.</p>}
       </div>}
     </section>
   </main>;
