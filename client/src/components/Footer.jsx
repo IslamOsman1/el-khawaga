@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Home, Grid2X2, ShoppingCart, Tag, MoreHorizontal, ClipboardList, Heart, Phone, Info, Package } from 'lucide-react';
+import { Home, Grid2X2, Package, ShoppingCart, MoreHorizontal, ClipboardList, Heart, Phone, Info } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 
 export default function Footer() {
@@ -11,8 +11,8 @@ export default function Footer() {
     <nav className="bottom-nav" aria-label="التنقل السريع">
       <NavLink to="/"><Home size={24} /><span>الرئيسية</span></NavLink>
       <NavLink to="/categories"><Grid2X2 size={24} /><span>الفئات</span></NavLink>
+      <NavLink to="/alwekala-products"><Package size={24} /><span>منتجات الوكالة</span></NavLink>
       <NavLink to="/cart"><ShoppingCart size={24} /><span>السلة</span>{totals.count > 0 && <b>{totals.count}</b>}</NavLink>
-      <NavLink to="/offers"><Tag size={24} /><span>العروض</span></NavLink>
 
       <div className={`bottom-more${moreOpen ? ' open' : ''}`}>
         <button type="button" className="bottom-more-trigger" onClick={() => setMoreOpen((current) => !current)}>
@@ -21,9 +21,9 @@ export default function Footer() {
         </button>
 
         {moreOpen && <div className="bottom-more-menu">
-          <Link to="/alwekala-products" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
+          <Link to="/offers" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
             <Package size={18} />
-            <span>منتجات الوكالة</span>
+            <span>العروض</span>
           </Link>
           <Link to="/orders" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
             <ClipboardList size={18} />
@@ -53,7 +53,7 @@ export default function Footer() {
         </div>
         <div>
           <strong>روابط سريعة</strong>
-          <p>الرئيسية • العروض • الفئات • منتجات الوكالة</p>
+          <p>الرئيسية • الفئات • منتجات الوكالة • العروض</p>
         </div>
         <div>
           <strong>الخدمة</strong>
