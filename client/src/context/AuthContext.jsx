@@ -14,6 +14,13 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   };
 
+  const refreshProfile = async () => {
+    const { data } = await api.get('/auth/profile');
+    localStorage.setItem('user', JSON.stringify(data));
+    setUser(data);
+    return data;
+  };
+
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     saveSession(data);
@@ -45,10 +52,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    api.get('/auth/profile').catch(() => logout());
+    refreshProfile().catch(() => logout());
   }, []);
 
-  return <AuthContext.Provider value={{ user, login, register, googleLogin, logout }}>
+  return <AuthContext.Provider value={{ user, login, register, googleLogin, logout, refreshProfile }}>
     {children}
   </AuthContext.Provider>;
 }

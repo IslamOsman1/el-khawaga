@@ -33,7 +33,10 @@ const orderSchema = new mongoose.Schema({
   },
   isPaid: { type: Boolean, default: false },
   paidAt: Date,
-  deliveredAt: Date
+  deliveredAt: Date,
+  refundedToWallet: { type: Boolean, default: false },
+  refundedAmount: { type: Number, default: 0 },
+  refundedAt: Date
 }, { timestamps: true });
 
 export default mongoose.model('Order', orderSchema);

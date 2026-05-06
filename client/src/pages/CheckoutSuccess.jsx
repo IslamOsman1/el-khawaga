@@ -15,20 +15,19 @@ export default function CheckoutSuccess() {
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
-    const orderId = searchParams.get('order_id');
     if (!sessionId) {
       setLoading(false);
       return;
     }
 
-    api.get(`/payments/stripe/verify/${sessionId}?orderId=${orderId || ''}`)
+    api.get(`/payments/stripe/verify/${sessionId}`)
       .then(({ data }) => {
         setPaid(Boolean(data.paid));
         setOrder(data.order);
         if (data.paid) {
           clearCart();
           sessionStorage.removeItem(checkoutDraftKey);
-          toast.success('تم تأكيد الدفع بنجاح');
+          toast.success('تم تأكيد الدفع بنجاح وإنشاء الطلب');
         }
       })
       .catch((error) => {
@@ -44,7 +43,7 @@ export default function CheckoutSuccess() {
         {loading
           ? 'لحظات ونقوم بمراجعة حالة عملية الدفع الخاصة بك.'
           : paid
-            ? `تم تأكيد طلبك${order?._id ? ` رقم ${order._id.slice(-6)}` : ''} ويمكنك متابعة حالته من صفحة الطلبات.`
+            ? `تم إنشاء طلبك${order?._id ? ` برقم ${order._id.slice(-6)}` : ''} بعد تأكيد الدفع بنجاح، ويمكنك متابعة حالته من صفحة الطلبات.`
             : 'يمكنك العودة إلى صفحة إكمال الطلب والمحاولة مرة أخرى.'}
       </p>
 

@@ -6,16 +6,19 @@ import { generateToken } from '../utils/generateToken.js';
 
 const googleClient = new OAuth2Client();
 
+const serializeUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  avatar: user.avatar || '',
+  walletBalance: Number(user.walletBalance || 0)
+});
+
 const buildAuthResponse = (user) => ({
   token: generateToken(user._id),
-  user: {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
-    avatar: user.avatar || ''
-  }
+  user: serializeUser(user)
 });
 
 const randomPassword = () => crypto.randomBytes(24).toString('hex');
@@ -113,4 +116,4 @@ export const googleLogin = asyncHandler(async (req, res) => {
   res.json(buildAuthResponse(user));
 });
 
-export const profile = asyncHandler(async (req, res) => res.json(req.user));
+export const profile = asyncHandler(async (req, res) => res.json(serializeUser(req.user)));

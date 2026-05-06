@@ -31,23 +31,31 @@ export default function CheckoutReview() {
     if (!items.length) navigate('/cart');
   }, [items, navigate]);
 
-  const orderLabel = useMemo(() => draft?.paymentMethod === 'online' ? 'دفع أونلاين' : 'الدفع عند الاستلام', [draft]);
+  const orderLabel = useMemo(
+    () => draft?.paymentMethod === 'online' ? 'دفع أونلاين' : 'الدفع عند الاستلام',
+    [draft]
+  );
 
   const submit = async () => {
     if (!draft) return;
     setSubmitting(true);
+
     try {
-      const { data: order } = await api.post('/orders', {
+      if (draft.paymentMethod === 'online') {
+        const { data } = await api.post('/payments/stripe/checkout-session', {
+          orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
+          shippingAddress: draft.shippingAddress
+        });
+
+        window.location.href = data.url;
+        return;
+      }
+
+      await api.post('/orders', {
         orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
         shippingAddress: draft.shippingAddress,
         paymentMethod: draft.paymentMethod
       });
-
-      if (draft.paymentMethod === 'online') {
-        const { data } = await api.post('/payments/stripe/checkout-session', { orderId: order._id });
-        window.location.href = data.url;
-        return;
-      }
 
       clearCart();
       sessionStorage.removeItem(checkoutDraftKey);
@@ -68,7 +76,7 @@ export default function CheckoutReview() {
         <h1>إكمال الطلب</h1>
         <p>راجع البيانات والمنتجات قبل تأكيد الطلب النهائي.</p>
       </div>
-      {searchParams.get('order') && <span className="muted">تم إلغاء الدفع ويمكنك المحاولة مرة أخرى.</span>}
+      {searchParams.get('cancelled') && <span className="muted">تم إلغاء الدفع ويمكنك المحاولة مرة أخرى بدون إنشاء طلب.</span>}
     </div>
 
     <div className="checkout-layout">

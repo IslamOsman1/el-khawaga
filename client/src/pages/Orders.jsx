@@ -1,18 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Clock3, PackageCheck, ShoppingBag } from 'lucide-react';
+import { ClipboardList, Clock3, PackageCheck, ShoppingBag, Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../api/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
+
+const CANCEL_WINDOW_MS = 5 * 60 * 1000;
 
 export default function Orders() {
+  const { refreshProfile } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState('');
 
-  useEffect(() => {
+  const loadOrders = () => {
     setLoading(true);
     api.get('/orders/my')
       .then(({ data }) => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadOrders();
   }, []);
 
   const stats = useMemo(() => ({
@@ -20,6 +30,34 @@ export default function Orders() {
     latest: orders[0]?.status || 'لا يوجد',
     total: orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0),
   }), [orders]);
+
+  const getRemainingCancelTime = (order) => {
+    const elapsed = Date.now() - new Date(order.createdAt).getTime();
+    return Math.max(0, CANCEL_WINDOW_MS - elapsed);
+  };
+
+  const canCancelOrder = (order) => order.status === 'جديد' && getRemainingCancelTime(order) > 0;
+
+  const formatRemaining = (ms) => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const cancelOrder = async (orderId) => {
+    setCancellingId(orderId);
+    try {
+      const { data } = await api.put(`/orders/${orderId}/cancel`);
+      toast.success(data.message || 'تم إلغاء الطلب');
+      await refreshProfile().catch(() => null);
+      loadOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'تعذر إلغاء الطلب');
+    } finally {
+      setCancellingId('');
+    }
+  };
 
   return <main className="app-shell home-screen market-home account-page-shell">
     <section className="panel-card account-hero">
@@ -30,7 +68,7 @@ export default function Orders() {
         <div className="account-copy">
           <span className="market-pill">الطلبات</span>
           <h1>طلباتي</h1>
-          <p>متابعة واضحة لكل طلباتك السابقة والحالية مع حالة كل طلب في مكان واحد.</p>
+          <p>متابعة واضحة لكل طلباتك السابقة والحالية مع إمكانية إلغاء الطلب خلال أول 5 دقائق فقط.</p>
         </div>
       </div>
       <div className="account-hero-actions">
@@ -61,32 +99,59 @@ export default function Orders() {
       </div>
 
       {loading ? <p className="muted">جاري تحميل الطلبات...</p> : orders.length ? <div className="orders-timeline">
-        {orders.map(order => <article className="order-showcase-card" key={order._id}>
-          <div className="order-showcase-top">
-            <div>
-              <strong>طلب #{order._id.slice(-6)}</strong>
-              <p>{new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
-            </div>
-            <span className="order-status-pill"><Clock3 size={14} /> {order.status}</span>
-          </div>
+        {orders.map((order) => {
+          const canCancel = canCancelOrder(order);
+          const remaining = getRemainingCancelTime(order);
 
-          <div className="order-showcase-bottom">
-            <div className="order-meta-box">
-              <PackageCheck size={18} />
+          return <article className="order-showcase-card" key={order._id}>
+            <div className="order-showcase-top">
               <div>
-                <span>قيمة الطلب</span>
-                <strong>{order.totalPrice} ج.م</strong>
+                <strong>طلب #{order._id.slice(-6)}</strong>
+                <p>{new Date(order.createdAt).toLocaleDateString('ar-EG')}</p>
+              </div>
+              <span className="order-status-pill"><Clock3 size={14} /> {order.status}</span>
+            </div>
+
+            <div className="order-showcase-bottom">
+              <div className="order-meta-box">
+                <PackageCheck size={18} />
+                <div>
+                  <span>قيمة الطلب</span>
+                  <strong>{order.totalPrice} ج.م</strong>
+                </div>
+              </div>
+              <div className="order-meta-box">
+                <ShoppingBag size={18} />
+                <div>
+                  <span>طريقة الدفع</span>
+                  <strong>{order.paymentMethod}</strong>
+                </div>
               </div>
             </div>
-            <div className="order-meta-box">
-              <ShoppingBag size={18} />
-              <div>
-                <span>الملخص</span>
-                <strong>طلب جاهز للمتابعة</strong>
-              </div>
+
+            {order.refundedToWallet && <div className="order-wallet-note">
+              <Wallet size={16} />
+              <span>تم تحويل {order.refundedAmount} ج.م إلى المحفظة.</span>
+            </div>}
+
+            <div className="order-actions-row">
+              {canCancel
+                ? <button
+                  type="button"
+                  className="secondary-btn order-cancel-btn"
+                  onClick={() => cancelOrder(order._id)}
+                  disabled={cancellingId === order._id}
+                >
+                  {cancellingId === order._id ? 'جارٍ الإلغاء...' : `إلغاء الطلب خلال ${formatRemaining(remaining)}`}
+                </button>
+                : <span className="muted order-cancel-note">
+                  {order.status === 'ملغي'
+                    ? 'تم إلغاء هذا الطلب'
+                    : 'انتهت مهلة الإلغاء أو بدأ تجهيز الطلب'}
+                </span>}
             </div>
-          </div>
-        </article>)}
+          </article>;
+        })}
       </div> : <div className="account-empty-state">
         <div className="account-empty-icon">
           <ClipboardList size={26} />

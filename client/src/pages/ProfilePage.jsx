@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Heart, Mail, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
+import { ClipboardList, Heart, Mail, ShieldCheck, ShoppingCart, UserRound, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProfilePage() {
@@ -16,7 +16,7 @@ export default function ProfilePage() {
         <div className="account-copy">
           <span className="market-pill">الملف الشخصي</span>
           <h1>{displayName}</h1>
-          <p>لوحة شخصية مختصرة للوصول السريع إلى بياناتك وطلباتك ومفضلاتك.</p>
+          <p>لوحة شخصية مختصرة للوصول السريع إلى بياناتك وطلباتك ومفضلاتك ومحفظتك.</p>
         </div>
       </div>
       <div className="account-hero-actions">
@@ -52,6 +52,13 @@ export default function ProfilePage() {
             <div>
               <strong>نوع الحساب</strong>
               <p>{user?.role === 'admin' ? 'مدير' : 'عميل'}</p>
+            </div>
+          </article>
+          <article className="account-info-card">
+            <span className="account-info-icon"><Wallet size={18} /></span>
+            <div>
+              <strong>رصيد المحفظة</strong>
+              <p>{Number(user?.walletBalance || 0)} ج.م</p>
             </div>
           </article>
         </div>

@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   googleId: { type: String, default: '' },
   avatar: { type: String, default: '' },
+  walletBalance: { type: Number, default: 0, min: 0 },
   role: { type: String, enum: ['user', 'admin'], default: 'user' }
 }, { timestamps: true });
 
