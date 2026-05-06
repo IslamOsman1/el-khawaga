@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
+import PasswordField from '../components/PasswordField.jsx';
+import useOtpCooldown from '../hooks/useOtpCooldown.js';
+import { normalizePhone, phoneFormatHelpText } from '../utils/phone.js';
 
 export default function ForgotPasswordPage() {
   const [phone, setPhone] = useState('');
@@ -15,20 +18,23 @@ export default function ForgotPasswordPage() {
   const [checkingCode, setCheckingCode] = useState(false);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { timeLeft, isCoolingDown, startCooldown, resetCooldown } = useOtpCooldown();
+  const normalizedPhone = useMemo(() => normalizePhone(phone), [phone]);
 
   const sendCode = async () => {
-    if (!phone.trim()) {
-      toast.error('أدخل رقم الهاتف أولًا');
+    if (!normalizedPhone) {
+      toast.error(phoneFormatHelpText);
       return;
     }
 
     try {
       setSendingCode(true);
-      await api.post('/auth/phone/send-code', { phone: phone.trim() });
+      await api.post('/auth/phone/send-code', { phone: normalizedPhone });
       setOtpSent(true);
       setOtpVerified(false);
       setOtpCode('');
       setPhoneVerificationToken('');
+      startCooldown(60);
       toast.success('تم إرسال رمز التحقق');
     } catch (error) {
       toast.error(error.response?.data?.message || 'تعذر إرسال رمز التحقق');
@@ -41,7 +47,7 @@ export default function ForgotPasswordPage() {
     try {
       setCheckingCode(true);
       const { data } = await api.post('/auth/phone/verify-code', {
-        phone: phone.trim(),
+        phone: normalizedPhone,
         code: otpCode
       });
       setOtpVerified(true);
@@ -56,6 +62,11 @@ export default function ForgotPasswordPage() {
 
   const submit = async (event) => {
     event.preventDefault();
+
+    if (!normalizedPhone) {
+      toast.error(phoneFormatHelpText);
+      return;
+    }
 
     if (!otpVerified || !phoneVerificationToken) {
       toast.error('يجب تأكيد رقم الهاتف أولًا');
@@ -75,7 +86,7 @@ export default function ForgotPasswordPage() {
     try {
       setSaving(true);
       await api.post('/auth/reset-password/phone', {
-        phone: phone.trim(),
+        phone: normalizedPhone,
         phoneVerificationToken,
         password: newPassword
       });
@@ -96,7 +107,7 @@ export default function ForgotPasswordPage() {
       <div className="otp-inline-row">
         <input
           type="text"
-          placeholder="رقم الهاتف بصيغة دولية مثل +2010..."
+          placeholder="رقم الهاتف"
           value={phone}
           onChange={(event) => {
             setPhone(event.target.value);
@@ -104,12 +115,14 @@ export default function ForgotPasswordPage() {
             setOtpVerified(false);
             setOtpCode('');
             setPhoneVerificationToken('');
+            resetCooldown();
           }}
         />
-        <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode}>
-          {sendingCode ? 'جارٍ الإرسال...' : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
+        <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode || isCoolingDown}>
+          {sendingCode ? 'جارٍ الإرسال...' : isCoolingDown ? `إعادة الإرسال خلال ${timeLeft}s` : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
         </button>
       </div>
+      <p className="field-hint">{phoneFormatHelpText}</p>
 
       {otpSent && <div className="otp-inline-row">
         <input
@@ -131,17 +144,17 @@ export default function ForgotPasswordPage() {
         </span>
       </div>
 
-      <input
-        type="password"
-        placeholder="كلمة المرور الجديدة"
+      <PasswordField
         value={newPassword}
         onChange={(event) => setNewPassword(event.target.value)}
+        placeholder="كلمة المرور الجديدة"
+        autoComplete="new-password"
       />
-      <input
-        type="password"
-        placeholder="تأكيد كلمة المرور"
+      <PasswordField
         value={confirmPassword}
         onChange={(event) => setConfirmPassword(event.target.value)}
+        placeholder="تأكيد كلمة المرور"
+        autoComplete="new-password"
       />
       <button className="primary-btn" disabled={saving}>{saving ? 'جارٍ الحفظ...' : 'تحديث كلمة المرور'}</button>
     </form>

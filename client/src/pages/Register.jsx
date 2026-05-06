@@ -3,7 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
 import SocialLoginButtons from '../components/SocialLoginButtons.jsx';
+import PasswordField from '../components/PasswordField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import useOtpCooldown from '../hooks/useOtpCooldown.js';
+import { normalizePhone, phoneFormatHelpText } from '../utils/phone.js';
 
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
@@ -15,8 +18,9 @@ export default function Register() {
   const [checkingCode, setCheckingCode] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { timeLeft, isCoolingDown, startCooldown, resetCooldown } = useOtpCooldown();
 
-  const normalizedPhone = useMemo(() => form.phone.trim(), [form.phone]);
+  const normalizedPhone = useMemo(() => normalizePhone(form.phone), [form.phone]);
 
   const change = (event) => {
     const { name, value } = event.target;
@@ -27,12 +31,13 @@ export default function Register() {
       setOtpVerified(false);
       setOtpCode('');
       setPhoneVerificationToken('');
+      resetCooldown();
     }
   };
 
   const sendCode = async () => {
     if (!normalizedPhone) {
-      toast.error('أدخل رقم الهاتف أولًا');
+      toast.error(phoneFormatHelpText);
       return;
     }
 
@@ -42,6 +47,7 @@ export default function Register() {
       setOtpSent(true);
       setOtpVerified(false);
       setPhoneVerificationToken('');
+      startCooldown(60);
       toast.success('تم إرسال رمز التحقق');
     } catch (error) {
       toast.error(error.response?.data?.message || 'تعذر إرسال رمز التحقق');
@@ -75,6 +81,11 @@ export default function Register() {
   const submit = async (event) => {
     event.preventDefault();
 
+    if (!normalizedPhone) {
+      toast.error(phoneFormatHelpText);
+      return;
+    }
+
     if (!otpVerified || !phoneVerificationToken) {
       toast.error('يجب تأكيد رقم الهاتف أولًا');
       return;
@@ -91,33 +102,22 @@ export default function Register() {
   return <div className="auth-card auth-extended-card">
     <h1>إنشاء حساب</h1>
     <form onSubmit={submit}>
-      <input
-        name="name"
-        type="text"
-        placeholder="الاسم"
-        value={form.name}
-        onChange={change}
-      />
-      <input
-        name="email"
-        type="email"
-        placeholder="البريد الإلكتروني"
-        value={form.email}
-        onChange={change}
-      />
+      <input name="name" type="text" placeholder="الاسم" value={form.name} onChange={change} />
+      <input name="email" type="email" placeholder="البريد الإلكتروني" value={form.email} onChange={change} />
 
       <div className="otp-inline-row">
         <input
           name="phone"
           type="text"
-          placeholder="رقم الهاتف بصيغة دولية مثل +2010..."
+          placeholder="رقم الهاتف"
           value={form.phone}
           onChange={change}
         />
-        <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode}>
-          {sendingCode ? 'جارٍ الإرسال...' : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
+        <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode || isCoolingDown}>
+          {sendingCode ? 'جارٍ الإرسال...' : isCoolingDown ? `إعادة الإرسال خلال ${timeLeft}s` : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
         </button>
       </div>
+      <p className="field-hint">{phoneFormatHelpText}</p>
 
       {otpSent && <div className="otp-inline-row">
         <input
@@ -139,12 +139,12 @@ export default function Register() {
         </span>
       </div>
 
-      <input
+      <PasswordField
         name="password"
-        type="password"
-        placeholder="كلمة المرور"
         value={form.password}
         onChange={change}
+        placeholder="كلمة المرور"
+        autoComplete="new-password"
       />
       <button className="primary-btn">تسجيل</button>
     </form>

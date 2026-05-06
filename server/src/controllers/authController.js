@@ -29,9 +29,27 @@ const randomPassword = () => crypto.randomBytes(24).toString('hex');
 const normalizePhone = (phone = '') => {
   const cleaned = String(phone).trim().replace(/[\s()-]/g, '');
   if (!cleaned) return '';
-  if (cleaned.startsWith('00')) return `+${cleaned.slice(2)}`;
-  return cleaned;
+
+  if (/^01\d{9}$/.test(cleaned)) {
+    return `+2${cleaned}`;
+  }
+
+  if (/^20(1[0-2,5]\d{8})$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+
+  if (/^00\d{8,15}$/.test(cleaned)) {
+    return `+${cleaned.slice(2)}`;
+  }
+
+  if (/^\+\d{8,15}$/.test(cleaned)) {
+    return cleaned;
+  }
+
+  return '';
 };
+
+const invalidPhoneMessage = 'اكتب رقمًا مصريًا صحيحًا مثل 01012345678 أو رقمًا دوليًا مثل +201012345678';
 
 const getTwilioConfig = () => ({
   accountSid: process.env.TWILIO_ACCOUNT_SID || '',
@@ -84,8 +102,8 @@ const validatePhoneVerificationToken = (token, phone) => {
 
 export const sendPhoneVerification = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
-  if (!phone || !phone.startsWith('+')) {
-    return res.status(400).json({ message: 'اكتب رقم الهاتف بصيغة دولية مثل +2010...' });
+  if (!phone) {
+    return res.status(400).json({ message: invalidPhoneMessage });
   }
 
   const verification = await twilioVerifyRequest('/Verifications', {
@@ -96,6 +114,7 @@ export const sendPhoneVerification = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     status: verification.status,
+    phone,
     message: 'تم إرسال رمز التحقق إلى رقم الهاتف'
   });
 });
@@ -104,8 +123,8 @@ export const checkPhoneVerification = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   const code = String(req.body.code || '').trim();
 
-  if (!phone || !phone.startsWith('+')) {
-    return res.status(400).json({ message: 'رقم الهاتف غير صالح' });
+  if (!phone) {
+    return res.status(400).json({ message: invalidPhoneMessage });
   }
 
   if (!/^\d{6}$/.test(code)) {
@@ -124,6 +143,7 @@ export const checkPhoneVerification = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     verified: true,
+    phone,
     phoneVerificationToken: createPhoneVerificationToken(phone)
   });
 });
@@ -132,7 +152,11 @@ export const loginWithPhoneCode = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   const phoneVerificationToken = req.body.phoneVerificationToken;
 
-  if (!phone || !phoneVerificationToken) {
+  if (!phone) {
+    return res.status(400).json({ message: invalidPhoneMessage });
+  }
+
+  if (!phoneVerificationToken) {
     return res.status(400).json({ message: 'يجب تأكيد رقم الهاتف أولًا' });
   }
 
@@ -158,7 +182,7 @@ export const register = asyncHandler(async (req, res) => {
   const exists = await User.findOne({ email });
 
   if (!phone) {
-    return res.status(400).json({ message: 'رقم الهاتف مطلوب' });
+    return res.status(400).json({ message: invalidPhoneMessage });
   }
 
   if (!phoneVerificationToken) {
@@ -286,7 +310,11 @@ export const resetPasswordWithPhone = asyncHandler(async (req, res) => {
   const phoneVerificationToken = req.body.phoneVerificationToken;
   const password = req.body.password;
 
-  if (!phone || !phoneVerificationToken) {
+  if (!phone) {
+    return res.status(400).json({ message: invalidPhoneMessage });
+  }
+
+  if (!phoneVerificationToken) {
     return res.status(400).json({ message: 'يجب تأكيد رقم الهاتف أولًا' });
   }
 

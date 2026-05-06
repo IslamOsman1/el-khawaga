@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import PasswordField from '../components/PasswordField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function CompletePasswordPage() {
@@ -45,17 +46,17 @@ export default function CompletePasswordPage() {
       </div>
 
       <form onSubmit={submit}>
-        <input
-          type="password"
-          placeholder="كلمة المرور الجديدة"
+        <PasswordField
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          placeholder="كلمة المرور الجديدة"
+          autoComplete="new-password"
         />
-        <input
-          type="password"
-          placeholder="تأكيد كلمة المرور"
+        <PasswordField
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
+          placeholder="تأكيد كلمة المرور"
+          autoComplete="new-password"
         />
         <button className="primary-btn" disabled={saving}>{saving ? 'جارٍ الحفظ...' : 'حفظ كلمة المرور'}</button>
       </form>

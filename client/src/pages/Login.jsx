@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
 import SocialLoginButtons from '../components/SocialLoginButtons.jsx';
+import PasswordField from '../components/PasswordField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import useOtpCooldown from '../hooks/useOtpCooldown.js';
+import { normalizePhone, phoneFormatHelpText } from '../utils/phone.js';
 
 export default function Login() {
   const [mode, setMode] = useState('password');
@@ -18,19 +21,22 @@ export default function Login() {
   const [checkingCode, setCheckingCode] = useState(false);
   const { login, loginWithPhoneCode } = useAuth();
   const navigate = useNavigate();
+  const { timeLeft, isCoolingDown, startCooldown, resetCooldown } = useOtpCooldown();
+  const normalizedPhone = useMemo(() => normalizePhone(phone), [phone]);
 
   const sendCode = async () => {
-    if (!phone.trim()) {
-      toast.error('أدخل رقم الهاتف أولًا');
+    if (!normalizedPhone) {
+      toast.error(phoneFormatHelpText);
       return;
     }
 
     try {
       setSendingCode(true);
-      await api.post('/auth/phone/send-code', { phone: phone.trim() });
+      await api.post('/auth/phone/send-code', { phone: normalizedPhone });
       setOtpSent(true);
       setOtpVerified(false);
       setPhoneVerificationToken('');
+      startCooldown(60);
       toast.success('تم إرسال رمز التحقق');
     } catch (error) {
       toast.error(error.response?.data?.message || 'تعذر إرسال رمز التحقق');
@@ -48,7 +54,7 @@ export default function Login() {
     try {
       setCheckingCode(true);
       const { data } = await api.post('/auth/phone/verify-code', {
-        phone: phone.trim(),
+        phone: normalizedPhone,
         code: otpCode
       });
       setOtpVerified(true);
@@ -74,13 +80,18 @@ export default function Login() {
   const submitPhoneLogin = async (event) => {
     event.preventDefault();
 
+    if (!normalizedPhone) {
+      toast.error(phoneFormatHelpText);
+      return;
+    }
+
     if (!otpVerified || !phoneVerificationToken) {
       toast.error('يجب تأكيد رقم الهاتف أولًا');
       return;
     }
 
     try {
-      await loginWithPhoneCode(phone.trim(), phoneVerificationToken);
+      await loginWithPhoneCode(normalizedPhone, phoneVerificationToken);
       navigate('/');
     } catch (error) {
       toast.error(error.response?.data?.message || 'فشل الدخول برقم الهاتف');
@@ -91,17 +102,16 @@ export default function Login() {
     <h1>تسجيل الدخول</h1>
 
     <div className="auth-mode-switch">
-      <button
-        type="button"
-        className={`auth-mode-btn${mode === 'password' ? ' active' : ''}`}
-        onClick={() => setMode('password')}
-      >
+      <button type="button" className={`auth-mode-btn${mode === 'password' ? ' active' : ''}`} onClick={() => setMode('password')}>
         البريد وكلمة المرور
       </button>
       <button
         type="button"
         className={`auth-mode-btn${mode === 'phone' ? ' active' : ''}`}
-        onClick={() => setMode('phone')}
+        onClick={() => {
+          setMode('phone');
+          resetCooldown();
+        }}
       >
         رقم الهاتف
       </button>
@@ -110,14 +120,18 @@ export default function Login() {
     {mode === 'password'
       ? <form onSubmit={submitPasswordLogin}>
         <input placeholder="البريد الإلكتروني" value={email} onChange={(event) => setEmail(event.target.value)} />
-        <input type="password" placeholder="كلمة المرور" value={password} onChange={(event) => setPassword(event.target.value)} />
+        <PasswordField
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="كلمة المرور"
+        />
         <button className="primary-btn">دخول</button>
       </form>
       : <form onSubmit={submitPhoneLogin}>
         <div className="otp-inline-row">
           <input
             type="text"
-            placeholder="رقم الهاتف بصيغة دولية مثل +2010..."
+            placeholder="رقم الهاتف"
             value={phone}
             onChange={(event) => {
               setPhone(event.target.value);
@@ -125,12 +139,14 @@ export default function Login() {
               setOtpVerified(false);
               setOtpCode('');
               setPhoneVerificationToken('');
+              resetCooldown();
             }}
           />
-          <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode}>
-            {sendingCode ? 'جارٍ الإرسال...' : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
+          <button type="button" className="secondary-btn otp-action-btn" onClick={sendCode} disabled={sendingCode || isCoolingDown}>
+            {sendingCode ? 'جارٍ الإرسال...' : isCoolingDown ? `إعادة الإرسال خلال ${timeLeft}s` : otpSent ? 'إعادة الإرسال' : 'إرسال الكود'}
           </button>
         </div>
+        <p className="field-hint">{phoneFormatHelpText}</p>
 
         {otpSent && <div className="otp-inline-row">
           <input

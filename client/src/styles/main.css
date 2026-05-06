@@ -504,6 +504,10 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
   .account-empty-actions{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
 }
 .auth-extended-card{display:grid;gap:14px}
+.password-field{position:relative;display:flex;align-items:center}
+.password-field input{padding-inline-start:48px !important}
+.password-toggle{position:absolute;left:10px;display:grid;place-items:center;width:34px;height:34px;border-radius:12px;border:0;background:transparent;color:var(--muted)}
+.field-hint{margin:-4px 2px 0;color:var(--muted);font-size:.82rem;line-height:1.6}
 .otp-inline-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
 .otp-action-btn{min-width:132px;justify-content:center}
 .otp-status-row{display:flex;justify-content:flex-start}
@@ -555,6 +559,7 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
 .admin-form textarea{width:100%;background:#181818;color:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem;margin:.35rem 0;min-height:110px;resize:vertical}
 body[data-theme='light'] .auth-divider span{background:var(--surface)}
 body[data-theme='light'] .social-icon-btn{border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .password-toggle{color:#8e7556}
 body[data-theme='light'] .otp-status-chip{background:#f7dfdf;color:#8a4141}
 body[data-theme='light'] .otp-status-chip.verified{background:#e5f3df;color:#3f6d2d}
 body[data-theme='light'] .auth-mode-btn{background:#fffaf2;color:#7a6448;border-color:rgba(184,137,78,.16)}
