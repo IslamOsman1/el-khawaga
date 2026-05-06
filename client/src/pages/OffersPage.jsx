@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../api/api.js';
 import ProductCard from '../components/ProductCard.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
@@ -107,18 +106,6 @@ export default function OffersPage() {
         </button>)}
       </div>
     </section>}
-
-    <section className="panel-card category-page-hero">
-      <div className="section-head">
-        <div>
-          <span className="market-pill">العروض</span>
-          <h1>{openSection || openGroup || 'عروض اليوم'}</h1>
-          <p>كل المنتجات التي عليها خصومات أو عروض مجمعة في صفحة واحدة، ومقسمة حسب الفئات والأقسام.</p>
-        </div>
-        <Link to="/" className="secondary-btn">العودة للرئيسية</Link>
-      </div>
-    </section>
-
     <section className="panel-card products-panel category-products-panel">
       <div className="section-head compact">
         <h2>{openSection || openGroup || 'كل العروض'}</h2>

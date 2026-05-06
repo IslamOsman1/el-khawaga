@@ -109,18 +109,6 @@ export default function AlWekalaProductsPage() {
         </button>)}
       </div>
     </section>}
-
-    <section className="panel-card category-page-hero">
-      <div className="section-head">
-        <div>
-          <span className="market-pill">منتجات الوكالة</span>
-          <h1>{openSection || openGroup || 'منتجات الوكالة'}</h1>
-          <p>منتجات مختارة من لوحة التحكم، مرتبة حسب الفئات والأقسام لعرض أوضح وأسهل في التصفح.</p>
-        </div>
-        <Link to="/" className="secondary-btn">العودة للرئيسية</Link>
-      </div>
-    </section>
-
     <section className="panel-card category-products-panel">
       <div className="section-head compact">
         <h2>{openSection || openGroup || 'كل المنتجات'}</h2>
