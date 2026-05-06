@@ -136,6 +136,17 @@ body[data-theme='light'] .theme-toggle:hover{color:var(--dark)}
 .market-category-card small{color:#7b6954;line-height:1.55;font-size:.86rem}
 .market-category-card.visual strong,
 .market-category-card.visual small{position:relative;z-index:1;color:#fffdf1}
+.explore-categories-panel{background:transparent;border:0;box-shadow:none;padding:0}
+.explore-categories-head{display:grid;justify-items:center;gap:10px;text-align:center;margin-bottom:22px}
+.explore-categories-head h2{margin:0;color:#fff;font-size:clamp(1.7rem,3vw,2.4rem);font-weight:900}
+.explore-categories-head p{margin:0;color:var(--muted);max-width:520px;line-height:1.8}
+.explore-categories-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.explore-category-card{background:#fffaf2;border:1px solid #eadcc3;border-radius:26px;padding:18px 16px 14px;display:grid;gap:14px;min-height:196px;box-shadow:0 16px 36px rgba(41,31,16,.06);transition:.2s}
+.explore-category-card:hover{transform:translateY(-4px);border-color:#deb77a}
+.explore-category-card strong{color:#17120d;font-size:1rem;font-weight:900;line-height:1.5;text-align:center}
+.explore-category-image-wrap{display:grid;place-items:center;min-height:118px}
+.explore-category-image{width:100%;max-width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(41,31,16,.12))}
+.explore-category-fallback{display:grid;place-items:center;width:100%;height:120px;border-radius:20px;background:#f4ead7;color:#8a7151;font-size:.9rem;font-weight:800;text-align:center;padding:12px}
 .market-app-banner{justify-content:space-between}
 .app-banner-copy{display:grid;gap:14px;max-width:560px}
 .app-banner-actions{display:flex;gap:12px;flex-wrap:wrap}
@@ -151,6 +162,10 @@ body[data-theme='light'] .market-category-card strong{color:#18130f}
 body[data-theme='light'] .market-feature-card p,
 body[data-theme='light'] .market-category-card small{color:#7a6448}
 body[data-theme='light'] .market-category-emoji{background:linear-gradient(180deg,#fff4e0,#f2dfbd)}
+body[data-theme='light'] .explore-categories-head h2{color:#18130f}
+body[data-theme='light'] .explore-category-card{background:#fffdf8;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .explore-category-card strong{color:#18130f}
+body[data-theme='light'] .explore-category-fallback{background:#f7efdf;color:#7a6448}
 body[data-theme='light'] .store-chip{background:#111;color:var(--gold)}
 .market-home{gap:22px;padding-top:12px}
 .market-hero{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:stretch;background:linear-gradient(135deg,#111111,#18120c 58%,#23180f 100%);border:1px solid rgba(222,183,122,.16);border-radius:32px;padding:34px;box-shadow:var(--shadow);overflow:hidden}
@@ -189,8 +204,8 @@ body[data-theme='light'] .hero-stat-card{background:#fff}
 body[data-theme='light'] .slider-arrow{background:rgba(255,255,255,.8);color:#17120d;box-shadow:0 8px 20px rgba(38,29,17,.1)}
 body[data-theme='light'] .hero-dots button{background:rgba(23,18,13,.18)}
 body[data-theme='light'] .hero-dots button.active{background:var(--gold-2)}
-@media(max-width:1000px){.market-hero{grid-template-columns:1fr;padding:26px}.market-feature-grid,.market-category-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.market-home{gap:18px}.market-hero{padding:20px 18px 22px;border-radius:26px}.market-pill{font-size:.88rem}.market-hero-copy h1{font-size:2.2rem}.market-hero-copy p{font-size:.96rem}.hero-logo-tile{min-height:170px;padding:18px}.market-hero-visual{grid-template-columns:1fr}.hero-stat-card{min-height:auto}.slider-arrow{top:auto;bottom:18px;transform:none;width:40px;height:40px}.slider-arrow.next{left:18px}.slider-arrow.prev{right:18px}.hero-dots{margin-top:6px}.market-feature-grid{grid-template-columns:1fr}.market-category-grid{grid-template-columns:1fr 1fr;gap:12px}.market-feature-card,.market-category-card{padding:16px}.market-category-card{min-height:146px}.market-category-emoji{width:46px;height:46px;font-size:1.35rem}.market-category-card strong{font-size:.84rem}.market-category-card small{font-size:.74rem;line-height:1.45}.app-banner-actions{display:grid;grid-template-columns:1fr 1fr}.store-chip{justify-content:center}.app-banner-brand{margin-inline-start:0}}
+@media(max-width:1000px){.market-hero{grid-template-columns:1fr;padding:26px}.market-feature-grid,.market-category-grid,.explore-categories-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.market-home{gap:18px}.market-hero{padding:20px 18px 22px;border-radius:26px}.market-pill{font-size:.88rem}.market-hero-copy h1{font-size:2.2rem}.market-hero-copy p{font-size:.96rem}.hero-logo-tile{min-height:170px;padding:18px}.market-hero-visual{grid-template-columns:1fr}.hero-stat-card{min-height:auto}.slider-arrow{top:auto;bottom:18px;transform:none;width:40px;height:40px}.slider-arrow.next{left:18px}.slider-arrow.prev{right:18px}.hero-dots{margin-top:6px}.market-feature-grid{grid-template-columns:1fr}.market-category-grid,.explore-categories-grid{grid-template-columns:1fr 1fr;gap:12px}.market-feature-card,.market-category-card{padding:16px}.market-category-card{min-height:146px}.market-category-emoji{width:46px;height:46px;font-size:1.35rem}.market-category-card strong{font-size:.84rem}.market-category-card small{font-size:.74rem;line-height:1.45}.explore-categories-head{gap:8px;margin-bottom:16px}.explore-category-card{min-height:160px;padding:14px 12px 12px;border-radius:20px;gap:10px}.explore-category-card strong{font-size:.84rem}.explore-category-image-wrap{min-height:88px}.explore-category-image,.explore-category-fallback{height:88px;max-width:88px;font-size:.76rem}.app-banner-actions{display:grid;grid-template-columns:1fr 1fr}.store-chip{justify-content:center}.app-banner-brand{margin-inline-start:0}}
 .products-grid .product-card,.category-products-grid .product-card{background:#fffdf9;border:1px solid #efdfc5;border-radius:24px;box-shadow:0 16px 32px rgba(41,31,16,.08);color:#17120d}
 .products-grid .product-image,.category-products-grid .product-image{height:208px;background:linear-gradient(180deg,#fff8ed,#f4e7d1);padding:8px}
 .products-grid .product-image img,.category-products-grid .product-image img{border-radius:20px}
@@ -356,6 +371,10 @@ body[data-theme='light'] .bottom-more-item:hover{background:#f4ead8;color:#18130
   .market-category-card{min-height:112px;padding:10px}
   .market-category-card strong{font-size:.74rem}
   .market-category-card small{font-size:.64rem}
+  .explore-category-card{min-height:148px;padding:12px 10px 10px}
+  .explore-category-card strong{font-size:.74rem}
+  .explore-category-image-wrap{min-height:78px}
+  .explore-category-image,.explore-category-fallback{height:78px;max-width:78px;font-size:.68rem}
   .product-card{border-radius:18px}
   .products-grid{gap:8px}
   .products-grid .product-image{height:124px;padding:7px}

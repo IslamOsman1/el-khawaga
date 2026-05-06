@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ShoppingBasket, Star, Truck } from 'lucide-r
 import api from '../api/api.js';
 import ProductCard from '../components/ProductCard.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
+import { getCategoryGroups } from '../utils/categoryHelpers.js';
 
 const categoryCards = [
   { title: 'الخضار الطازج', category: 'خضار', subtitle: 'اختيار يومي من السوق', emoji: '🥬' },
@@ -47,6 +48,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
   const { settings } = useStoreSettings();
+  const categoryGroups = useMemo(() => getCategoryGroups(settings), [settings]);
 
   useEffect(() => {
     setLoading(true);
@@ -99,6 +101,23 @@ export default function Home() {
   const slide = heroSlides[activeSlide] || fallbackSlides[0];
   const bestSellers = products.filter((product) => product.isDeal).slice(0, 8);
   const featuredCategories = settings?.home?.featuredCategories?.length ? settings.home.featuredCategories : categoryCards;
+  const exploreCategories = useMemo(() => {
+    const featuredLookup = new Map(featuredCategories.map((item) => [item.category || item.title, item]));
+
+    return categoryGroups.map((group) => {
+      const sourceCategories = (group.sections || []).map((section) => section.sourceCategory).filter(Boolean);
+      const featuredMatch = sourceCategories
+        .map((sourceCategory) => featuredLookup.get(sourceCategory))
+        .find(Boolean) || featuredLookup.get(group.title);
+      const productImage = products.find((product) => sourceCategories.includes(product.category) && product.image?.url)?.image?.url;
+
+      return {
+        title: group.title,
+        target: group.title,
+        image: featuredMatch?.image || productImage || ''
+      };
+    });
+  }, [categoryGroups, featuredCategories, products]);
 
   return <main className="app-shell home-screen market-home">
     <section className={`market-hero image-promo-hero ${slide.accentClass || ''}`}>
@@ -170,6 +189,26 @@ export default function Home() {
         </section>}
         {!bestSellers.length && <p className="muted">لا توجد منتجات معلمة حاليًا لهذا القسم.</p>}
       </div>}
+    </section>
+
+    <section className="panel-card explore-categories-panel" id="explore-categories">
+      <div className="explore-categories-head">
+        <h2>استكشف فئاتنا</h2>
+        <p>تصفح أقسام المتجر بسهولة واختر الفئة التي تناسب طلبك.</p>
+      </div>
+
+      <div className="explore-categories-grid">
+        {exploreCategories.map((item) => <Link
+          to={`/category/${encodeURIComponent(item.target)}`}
+          key={item.title}
+          className="explore-category-card"
+        >
+          <strong>{item.title}</strong>
+          <div className="explore-category-image-wrap">
+            {item.image ? <img src={item.image} alt={item.title} className="explore-category-image" loading="lazy" /> : <span className="explore-category-fallback">{item.title}</span>}
+          </div>
+        </Link>)}
+      </div>
     </section>
   </main>;
 }
