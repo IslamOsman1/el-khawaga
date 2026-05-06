@@ -504,6 +504,11 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
   .account-empty-actions{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
 }
 .auth-extended-card{display:grid;gap:14px}
+.otp-inline-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.otp-action-btn{min-width:132px;justify-content:center}
+.otp-status-row{display:flex;justify-content:flex-start}
+.otp-status-chip{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:#2b1616;color:#ffd6d6;font-size:.82rem;font-weight:800}
+.otp-status-chip.verified{background:#182816;color:#dff5d7}
 .password-setup-card{max-width:520px;margin:32px auto}
 .password-setup-user{display:grid;gap:4px;padding:14px 16px;border-radius:18px;background:#171717;border:1px solid rgba(222,183,122,.12)}
 .password-setup-user strong{color:#fff}
@@ -546,6 +551,8 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
 .admin-form textarea{width:100%;background:#181818;color:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem;margin:.35rem 0;min-height:110px;resize:vertical}
 body[data-theme='light'] .auth-divider span{background:var(--surface)}
 body[data-theme='light'] .social-icon-btn{border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .otp-status-chip{background:#f7dfdf;color:#8a4141}
+body[data-theme='light'] .otp-status-chip.verified{background:#e5f3df;color:#3f6d2d}
 body[data-theme='light'] .password-setup-user{background:#fffaf2;border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .password-setup-user strong{color:#18130f}
 body[data-theme='light'] .payment-option-card,
@@ -567,6 +574,8 @@ body[data-theme='light'] .admin-form textarea{background:#f7f0e4;color:#18130f;b
   .checkout-payment-options{grid-template-columns:1fr;gap:10px}
   .checkout-review-actions{display:grid;grid-template-columns:1fr;gap:10px}
   .admin-checkbox-row{display:grid;gap:10px}
+  .otp-inline-row{grid-template-columns:1fr}
+  .otp-action-btn{width:100%}
 }
 .admin-dashboard-page{display:grid;gap:22px;background:transparent;box-shadow:none;padding:0;color:var(--ink)}
 .admin-dashboard-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:stretch}

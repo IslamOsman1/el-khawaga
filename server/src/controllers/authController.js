@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import asyncHandler from 'express-async-handler';
+import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { generateToken } from '../utils/generateToken.js';
@@ -25,15 +26,139 @@ const buildAuthResponse = (user) => ({
 
 const randomPassword = () => crypto.randomBytes(24).toString('hex');
 
+const normalizePhone = (phone = '') => {
+  const cleaned = String(phone).trim().replace(/[\s()-]/g, '');
+  if (!cleaned) return '';
+  if (cleaned.startsWith('00')) return `+${cleaned.slice(2)}`;
+  return cleaned;
+};
+
+const getTwilioConfig = () => ({
+  accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+  authToken: process.env.TWILIO_AUTH_TOKEN || '',
+  verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID || ''
+});
+
+const ensureTwilioVerifyEnabled = () => {
+  const { accountSid, authToken, verifyServiceSid } = getTwilioConfig();
+  if (!accountSid || !authToken || !verifyServiceSid) {
+    const error = new Error('مصادقة رقم الهاتف غير مفعلة من إعدادات البيئة');
+    error.statusCode = 400;
+    throw error;
+  }
+  return { accountSid, authToken, verifyServiceSid };
+};
+
+const twilioVerifyRequest = async (path, payload) => {
+  const { accountSid, authToken, verifyServiceSid } = ensureTwilioVerifyEnabled();
+  const body = new URLSearchParams(payload);
+  const response = await fetch(`https://verify.twilio.com/v2/Services/${verifyServiceSid}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.message || 'تعذر إرسال أو التحقق من رمز الهاتف');
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  return data;
+};
+
+const createPhoneVerificationToken = (phone) => jwt.sign(
+  { phone, purpose: 'phone_verification' },
+  process.env.JWT_SECRET,
+  { expiresIn: '15m' }
+);
+
+const validatePhoneVerificationToken = (token, phone) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  return decoded?.purpose === 'phone_verification' && decoded.phone === phone;
+};
+
+export const sendPhoneVerification = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!phone || !phone.startsWith('+')) {
+    return res.status(400).json({ message: 'اكتب رقم الهاتف بصيغة دولية مثل +2010...' });
+  }
+
+  const verification = await twilioVerifyRequest('/Verifications', {
+    To: phone,
+    Channel: 'sms'
+  });
+
+  res.json({
+    success: true,
+    status: verification.status,
+    message: 'تم إرسال رمز التحقق إلى رقم الهاتف'
+  });
+});
+
+export const checkPhoneVerification = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  const code = String(req.body.code || '').trim();
+
+  if (!phone || !phone.startsWith('+')) {
+    return res.status(400).json({ message: 'رقم الهاتف غير صالح' });
+  }
+
+  if (!/^\d{6}$/.test(code)) {
+    return res.status(400).json({ message: 'رمز التحقق يجب أن يكون 6 أرقام' });
+  }
+
+  const verificationCheck = await twilioVerifyRequest('/VerificationCheck', {
+    To: phone,
+    Code: code
+  });
+
+  if (verificationCheck.status !== 'approved') {
+    return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
+  }
+
+  res.json({
+    success: true,
+    verified: true,
+    phoneVerificationToken: createPhoneVerificationToken(phone)
+  });
+});
+
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, phone } = req.body;
+  const { name, email, password, phoneVerificationToken } = req.body;
+  const phone = normalizePhone(req.body.phone);
   const exists = await User.findOne({ email });
+
+  if (!phone) {
+    return res.status(400).json({ message: 'رقم الهاتف مطلوب' });
+  }
+
+  if (!phoneVerificationToken) {
+    return res.status(400).json({ message: 'يجب تأكيد رقم الهاتف أولًا' });
+  }
+
+  try {
+    if (!validatePhoneVerificationToken(phoneVerificationToken, phone)) {
+      return res.status(400).json({ message: 'تعذر التحقق من تأكيد رقم الهاتف' });
+    }
+  } catch {
+    return res.status(400).json({ message: 'انتهت صلاحية تأكيد رقم الهاتف، أعد المحاولة' });
+  }
+
+  const phoneOwner = await User.findOne({ phone });
+  if (phoneOwner && String(phoneOwner.email) !== String(email)) {
+    return res.status(400).json({ message: 'رقم الهاتف مستخدم بالفعل' });
+  }
 
   if (exists) {
     if (exists.googleId && !exists.hasManualPassword) {
       exists.name = name || exists.name;
       exists.password = password;
-      exists.phone = phone || exists.phone;
+      exists.phone = phone;
       exists.hasManualPassword = true;
       await exists.save();
       return res.status(200).json(buildAuthResponse(exists));
