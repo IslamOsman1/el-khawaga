@@ -6,6 +6,7 @@ import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { calculateShippingPrice } from '../utils/shipping.js';
 
 const CANCEL_WINDOW_MS = 5 * 60 * 1000;
+const LOYALTY_POINT_RATE = 10;
 
 const buildOrderItems = async (orderItems) => {
   const ids = orderItems.map((item) => item.product);
@@ -30,6 +31,32 @@ const canUserCancelOrder = (order) => {
   if (!order) return false;
   if (order.status !== 'جديد') return false;
   return Date.now() - new Date(order.createdAt).getTime() <= CANCEL_WINDOW_MS;
+};
+
+const calculateLoyaltyPoints = (order) => Math.max(0, Math.floor(Number(order?.itemsPrice || 0) / LOYALTY_POINT_RATE));
+
+const awardLoyaltyPointsIfEligible = async (order) => {
+  if (!order || order.status !== 'تم التسليم' || order.loyaltyPointsAwarded) return;
+
+  const points = calculateLoyaltyPoints(order);
+  order.loyaltyPointsAwarded = true;
+  order.loyaltyPointsAmount = points;
+
+  if (!points) return;
+
+  const user = await User.findById(order.user);
+  if (!user) return;
+
+  user.loyaltyPoints = Number(user.loyaltyPoints || 0) + points;
+  user.loyaltyHistory = [
+    {
+      amount: points,
+      reason: 'نقاط من طلب مكتمل',
+      order: order._id
+    },
+    ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+  ].slice(0, 30);
+  await user.save();
 };
 
 export const createOrder = asyncHandler(async (req, res) => {
@@ -75,7 +102,7 @@ export const myOrders = asyncHandler(async (req, res) => {
 });
 
 export const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email phone walletBalance');
+  const order = await Order.findById(req.params.id).populate('user', 'name email phone walletBalance loyaltyPoints');
   if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
 
   const isOwner = order.user?._id?.toString() === req.user._id.toString();
@@ -87,7 +114,9 @@ export const getOrderById = asyncHandler(async (req, res) => {
 });
 
 export const allOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({}).populate('user', 'name email phone walletBalance').sort({ createdAt: -1 });
+  const orders = await Order.find({})
+    .populate('user', 'name email phone walletBalance loyaltyPoints')
+    .sort({ createdAt: -1 });
   res.json(orders);
 });
 
@@ -139,14 +168,17 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
 
   order.status = req.body.status || order.status;
+
   if (req.body.isPaid === true) {
     order.isPaid = true;
     order.paidAt = order.paidAt || new Date();
   }
+
   if (order.status === 'تم التسليم') {
     order.deliveredAt = new Date();
   }
 
+  await awardLoyaltyPointsIfEligible(order);
   await order.save();
   res.json(order);
 });

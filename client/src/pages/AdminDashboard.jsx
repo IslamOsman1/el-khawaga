@@ -311,6 +311,7 @@ export default function AdminDashboard() {
         member.phone,
         member.role,
         member.walletBalance,
+        member.loyaltyPoints,
         member.hasManualPassword ? 'manual' : 'google'
       ].some((value) => normalizeText(value).includes(term)));
   }, [users, searchTerms.users]);
@@ -1157,6 +1158,7 @@ export default function AdminDashboard() {
                     <th>الصلاحيات</th>
                     <th>التسجيل</th>
                     <th>المحفظة</th>
+                    <th>النقاط</th>
                     <th>تاريخ الإنشاء</th>
                   </tr>
                 </thead>
@@ -1189,6 +1191,7 @@ export default function AdminDashboard() {
                       </td>
                       <td>{member.hasManualPassword ? 'يدوي' : member.googleId ? 'Google' : '-'}</td>
                       <td>{Number(member.walletBalance || 0)} ج.م</td>
+                      <td>{Number(member.loyaltyPoints || 0)} نقطة</td>
                       <td>{new Date(member.createdAt).toLocaleDateString('ar-EG')}</td>
                     </tr>
                   ))}

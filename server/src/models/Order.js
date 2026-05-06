@@ -34,6 +34,8 @@ const orderSchema = new mongoose.Schema({
   isPaid: { type: Boolean, default: false },
   paidAt: Date,
   deliveredAt: Date,
+  loyaltyPointsAwarded: { type: Boolean, default: false },
+  loyaltyPointsAmount: { type: Number, default: 0 },
   refundedToWallet: { type: Boolean, default: false },
   refundedAmount: { type: Number, default: 0 },
   refundedAt: Date

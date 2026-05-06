@@ -35,12 +35,14 @@ const serializeUser = (user) => ({
   permissions: user.permissions || [],
   avatar: user.avatar || '',
   walletBalance: Number(user.walletBalance || 0),
+  loyaltyPoints: Number(user.loyaltyPoints || 0),
+  loyaltyHistory: Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [],
   hasManualPassword: Boolean(user.hasManualPassword)
 });
 
 export const allUsers = asyncHandler(async (_req, res) => {
   const users = await User.find({})
-    .select('name email phone role permissions avatar walletBalance hasManualPassword createdAt googleId addresses')
+    .select('name email phone role permissions avatar walletBalance loyaltyPoints hasManualPassword createdAt googleId addresses')
     .sort({ createdAt: -1 });
 
   res.json(users);

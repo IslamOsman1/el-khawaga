@@ -6,6 +6,13 @@ const addressSchema = new mongoose.Schema({
   address: { type: String, trim: true, default: '' }
 }, { _id: true });
 
+const loyaltyPointEntrySchema = new mongoose.Schema({
+  amount: { type: Number, default: 0 },
+  reason: { type: String, trim: true, default: '' },
+  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: true });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -16,8 +23,11 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String, default: '' },
   addresses: { type: [addressSchema], default: [] },
   walletBalance: { type: Number, default: 0, min: 0 },
+  loyaltyPoints: { type: Number, default: 0, min: 0 },
+  loyaltyHistory: { type: [loyaltyPointEntrySchema], default: [] },
   resetPasswordCodeHash: { type: String, default: '' },
   resetPasswordCodeExpires: { type: Date, default: null },
+  resetPasswordCodeSentAt: { type: Date, default: null },
   permissions: {
     type: [String],
     default: [],

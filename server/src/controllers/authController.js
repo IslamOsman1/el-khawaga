@@ -17,6 +17,8 @@ const serializeUser = (user) => ({
   permissions: user.permissions || [],
   avatar: user.avatar || '',
   walletBalance: Number(user.walletBalance || 0),
+  loyaltyPoints: Number(user.loyaltyPoints || 0),
+  loyaltyHistory: Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [],
   hasManualPassword: Boolean(user.hasManualPassword)
 });
 
@@ -34,6 +36,7 @@ const buildResetCode = () => String(Math.floor(100000 + Math.random() * 900000))
 const hashResetCode = (code) => crypto.createHash('sha256').update(String(code)).digest('hex');
 
 const passwordTooShortMessage = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+const resetCodeCooldownMs = 60 * 1000;
 
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
@@ -163,9 +166,23 @@ export const sendResetPasswordCode = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'لا يوجد حساب مرتبط بهذا البريد الإلكتروني' });
   }
 
+  if (
+    user.resetPasswordCodeSentAt &&
+    Date.now() - new Date(user.resetPasswordCodeSentAt).getTime() < resetCodeCooldownMs
+  ) {
+    const secondsLeft = Math.ceil(
+      (resetCodeCooldownMs - (Date.now() - new Date(user.resetPasswordCodeSentAt).getTime())) / 1000
+    );
+
+    return res.status(429).json({
+      message: `يمكنك طلب كود جديد بعد ${secondsLeft} ثانية`
+    });
+  }
+
   const code = buildResetCode();
   user.resetPasswordCodeHash = hashResetCode(code);
   user.resetPasswordCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+  user.resetPasswordCodeSentAt = new Date();
   await user.save();
 
   await sendEmail({
@@ -173,11 +190,39 @@ export const sendResetPasswordCode = asyncHandler(async (req, res) => {
     subject: 'كود استرجاع كلمة المرور - Al Wekala',
     text: `كود استرجاع كلمة المرور هو: ${code}. صالح لمدة 15 دقيقة.`,
     html: `
-      <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
-        <h2>استرجاع كلمة المرور</h2>
-        <p>استخدم الكود التالي لإعادة تعيين كلمة المرور:</p>
-        <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; margin: 16px 0;">${code}</div>
-        <p>صلاحية الكود 15 دقيقة.</p>
+      <div style="margin:0;padding:32px 16px;background:#f6f1e7;direction:rtl;text-align:right;font-family:Arial,'Segoe UI',Tahoma,sans-serif;color:#18130f;">
+        <div style="max-width:560px;margin:0 auto;background:#fffdf8;border:1px solid #eadcc7;border-radius:24px;overflow:hidden;box-shadow:0 18px 40px rgba(38,29,17,.08);">
+          <div style="padding:24px 28px;background:linear-gradient(135deg,#111111,#2b1e12);color:#f7e9d1;">
+            <div style="font-size:13px;letter-spacing:1px;opacity:.9;margin-bottom:10px;">AL WEKALA</div>
+            <h2 style="margin:0;font-size:28px;line-height:1.3;">استرجاع كلمة المرور</h2>
+            <p style="margin:10px 0 0;font-size:15px;line-height:1.8;color:#ead8bb;">
+              وصلك هذا البريد لأنك طلبت إعادة تعيين كلمة المرور الخاصة بحسابك.
+            </p>
+          </div>
+
+          <div style="padding:28px;">
+            <p style="margin:0 0 14px;font-size:15px;line-height:1.9;color:#4c3b2b;">
+              استخدم الكود التالي داخل صفحة استرجاع كلمة المرور:
+            </p>
+
+            <div style="margin:18px 0 20px;padding:18px 20px;border-radius:20px;background:#111111;color:#deb77a;font-size:32px;font-weight:800;letter-spacing:8px;text-align:center;">
+              ${code}
+            </div>
+
+            <div style="display:grid;gap:10px;margin:0 0 18px;">
+              <div style="padding:12px 14px;border-radius:16px;background:#f7f0e4;color:#5b4833;font-size:14px;">
+                صلاحية الكود: <strong>15 دقيقة</strong>
+              </div>
+              <div style="padding:12px 14px;border-radius:16px;background:#f7f0e4;color:#5b4833;font-size:14px;">
+                يمكن طلب كود جديد بعد <strong>60 ثانية</strong>
+              </div>
+            </div>
+
+            <p style="margin:0;font-size:13px;line-height:1.9;color:#8e7556;">
+              إذا لم تطلب تغيير كلمة المرور، يمكنك تجاهل هذا البريد بأمان.
+            </p>
+          </div>
+        </div>
       </div>
     `
   });
@@ -214,6 +259,7 @@ export const resetPasswordWithEmailCode = asyncHandler(async (req, res) => {
   if (user.resetPasswordCodeExpires.getTime() < Date.now()) {
     user.resetPasswordCodeHash = '';
     user.resetPasswordCodeExpires = null;
+    user.resetPasswordCodeSentAt = null;
     await user.save();
     return res.status(400).json({ message: 'انتهت صلاحية الكود، اطلب كودًا جديدًا' });
   }
@@ -226,6 +272,7 @@ export const resetPasswordWithEmailCode = asyncHandler(async (req, res) => {
   user.hasManualPassword = true;
   user.resetPasswordCodeHash = '';
   user.resetPasswordCodeExpires = null;
+  user.resetPasswordCodeSentAt = null;
   await user.save();
 
   res.json({ success: true, message: 'تم تحديث كلمة المرور بنجاح' });
