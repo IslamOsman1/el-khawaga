@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+const addressSchema = new mongoose.Schema({
+  label: { type: String, trim: true, default: '' },
+  address: { type: String, trim: true, default: '' }
+}, { _id: true });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -9,6 +14,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   googleId: { type: String, default: '' },
   avatar: { type: String, default: '' },
+  addresses: { type: [addressSchema], default: [] },
   walletBalance: { type: Number, default: 0, min: 0 },
   permissions: {
     type: [String],

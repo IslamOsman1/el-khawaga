@@ -12,6 +12,7 @@ const serializeUser = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
+  addresses: Array.isArray(user.addresses) ? user.addresses : [],
   role: user.role,
   permissions: user.permissions || [],
   avatar: user.avatar || '',

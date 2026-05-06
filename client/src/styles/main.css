@@ -443,6 +443,22 @@ body[data-theme='light'] .bottom-more-item:hover{background:#f4ead8;color:#18130
 .account-info-icon{width:38px;height:38px;border-radius:12px;background:#f8eedc;color:#9b6d32;display:grid;place-items:center}
 .account-info-card strong{display:block;color:#17120d;margin-bottom:4px}
 .account-info-card p{margin:0;color:#7b6954;line-height:1.6}
+.settings-page-panel{display:grid;gap:24px}
+.settings-form{display:grid;gap:22px}
+.settings-avatar-block{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:18px;border-radius:24px;background:#fffdf9;border:1px solid #f0e2ca;box-shadow:0 16px 36px rgba(41,31,16,.06)}
+.settings-avatar-preview{width:84px;height:84px;border-radius:24px;background:#1f1812;color:#fff8ec;display:grid;place-items:center;font-size:1.4rem;font-weight:900;overflow:hidden}
+.settings-avatar-image{width:100%;height:100%;object-fit:cover}
+.settings-avatar-copy{display:grid;gap:6px}
+.settings-avatar-copy strong{color:#17120d}
+.settings-avatar-copy span{color:#7b6954}
+.settings-upload-pill{justify-content:center}
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.settings-addresses-block{display:grid;gap:16px}
+.settings-add-address{min-height:42px}
+.settings-addresses-stack{display:grid;gap:14px}
+.settings-address-card{display:grid;grid-template-columns:220px 1fr auto;gap:14px;align-items:end;padding:18px;border-radius:22px;background:#fffdf9;border:1px solid #f0e2ca;box-shadow:0 16px 36px rgba(41,31,16,.06)}
+.settings-address-card textarea{width:100%;background:#181818;color:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem;min-height:110px;resize:vertical}
+.settings-save-btn{width:max-content}
 .quick-links-panel{display:grid;gap:14px}
 .quick-links-list{display:grid;gap:10px}
 .quick-link-item{background:#fffdf9;border:1px solid #f0e2ca;border-radius:20px;padding:16px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:flex-start;box-shadow:0 16px 36px rgba(41,31,16,.06)}
@@ -468,25 +484,31 @@ body[data-theme='light'] .account-copy p{color:#5b4833}
 body[data-theme='light'] .account-stat-card,
 body[data-theme='light'] .account-info-card,
 body[data-theme='light'] .quick-link-item,
-body[data-theme='light'] .order-showcase-card{background:#fffaf2;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .order-showcase-card,
+body[data-theme='light'] .settings-avatar-block,
+body[data-theme='light'] .settings-address-card{background:#fffaf2;border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .order-wallet-note{background:#f7eddc;color:#8a622e}
 body[data-theme='light'] .account-stat-card strong,
 body[data-theme='light'] .account-info-card strong,
 body[data-theme='light'] .quick-link-item strong,
 body[data-theme='light'] .order-showcase-top strong,
-body[data-theme='light'] .order-meta-box strong{color:#18130f}
+body[data-theme='light'] .order-meta-box strong,
+body[data-theme='light'] .settings-avatar-copy strong{color:#18130f}
 body[data-theme='light'] .account-stat-card span,
 body[data-theme='light'] .account-info-card p,
 body[data-theme='light'] .quick-link-item span,
 body[data-theme='light'] .order-showcase-top p,
-body[data-theme='light'] .order-meta-box span{color:#7a6448}
+body[data-theme='light'] .order-meta-box span,
+body[data-theme='light'] .settings-avatar-copy span{color:#7a6448}
 body[data-theme='light'] .order-status-pill,
 body[data-theme='light'] .order-meta-box,
 body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd5af}
+body[data-theme='light'] .settings-address-card textarea{background:#fffdf8;color:#18130f;border-color:rgba(184,137,78,.16)}
 @media(max-width:900px){
   .account-hero{display:grid}
-  .account-stats-grid,.account-info-grid,.order-showcase-bottom{grid-template-columns:1fr 1fr}
+  .account-stats-grid,.account-info-grid,.order-showcase-bottom,.settings-grid{grid-template-columns:1fr 1fr}
   .account-info-layout{grid-template-columns:1fr}
+  .settings-address-card{grid-template-columns:1fr}
 }
 @media(max-width:640px){
   .account-hero{padding:16px 14px;border-radius:20px}
@@ -495,8 +517,12 @@ body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd
   .account-copy h1{font-size:1.5rem}
   .account-copy p{font-size:.8rem}
   .account-hero-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .account-stats-grid,.account-info-grid,.order-showcase-bottom{grid-template-columns:1fr;gap:10px}
+  .account-stats-grid,.account-info-grid,.order-showcase-bottom,.settings-grid{grid-template-columns:1fr;gap:10px}
   .account-stat-card,.account-info-card,.quick-link-item,.order-showcase-card{padding:14px;border-radius:18px}
+  .settings-avatar-block{grid-template-columns:1fr;justify-items:start;padding:14px;border-radius:20px}
+  .settings-avatar-preview{width:72px;height:72px;border-radius:20px}
+  .settings-address-card{grid-template-columns:1fr;padding:14px;border-radius:18px}
+  .settings-save-btn,.settings-add-address{width:100%}
   .account-stat-card strong{font-size:1.2rem}
   .order-showcase-top{display:grid;gap:10px}
   .order-actions-row{display:grid;gap:10px}

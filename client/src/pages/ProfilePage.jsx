@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Heart, Mail, ShieldCheck, ShoppingCart, UserRound, Wallet } from 'lucide-react';
+import { ClipboardList, Heart, Mail, Phone, ShieldCheck, ShoppingCart, UserRound, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProfilePage() {
@@ -45,6 +45,13 @@ export default function ProfilePage() {
             <div>
               <strong>البريد الإلكتروني</strong>
               <p>{user?.email || 'غير متوفر'}</p>
+            </div>
+          </article>
+          <article className="account-info-card">
+            <span className="account-info-icon"><Phone size={18} /></span>
+            <div>
+              <strong>رقم الهاتف</strong>
+              <p>{user?.phone || 'غير متوفر'}</p>
             </div>
           </article>
           <article className="account-info-card">

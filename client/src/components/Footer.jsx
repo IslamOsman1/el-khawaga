@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Home, Grid2X2, Package, ShoppingCart, MoreHorizontal, ClipboardList, Heart, Phone, Info } from 'lucide-react';
+import { Home, Grid2X2, Package, ShoppingCart, MoreHorizontal, ClipboardList, Heart, Phone, Info, Settings } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 
 export default function Footer() {
@@ -33,6 +33,10 @@ export default function Footer() {
           <Link to="/wishlist" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
             <Heart size={18} />
             <span>المفضلة</span>
+          </Link>
+          <Link to="/settings" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
+            <Settings size={18} />
+            <span>الإعدادات</span>
           </Link>
           <Link to="/contact" className="bottom-more-item" onClick={() => setMoreOpen(false)}>
             <Phone size={18} />

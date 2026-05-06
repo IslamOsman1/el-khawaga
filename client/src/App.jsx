@@ -11,6 +11,7 @@ import OffersPage from './pages/OffersPage.jsx';
 import WishlistPage from './pages/WishlistPage.jsx';
 import ProductDetails from './pages/ProductDetails.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import AlWekalaProductsPage from './pages/AlWekalaProductsPage.jsx';
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/cart" element={<Cart />} />
