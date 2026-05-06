@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
 import api from '../api/api.js';
 import ProductCard from '../components/ProductCard.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
@@ -13,7 +12,6 @@ export default function CategoriesPage() {
   const categoryGroups = useMemo(() => getCategoryGroups(settings), [settings]);
   const allSourceCategories = useMemo(() => getSourceCategories(categoryGroups), [categoryGroups]);
   const [openGroup, setOpenGroup] = useState('');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,6 +51,7 @@ export default function CategoriesPage() {
       }))
       .filter((section) => section.items.length);
   }, [products, visibleCategories]);
+
   const activeGroup = categoryGroups.find((group) => group.title === openGroup);
 
   return <main className="app-shell home-screen market-home category-page-shell">
@@ -80,7 +79,7 @@ export default function CategoriesPage() {
     {!!activeGroup?.sections?.length && <section className="secondary-category-bar">
       <div className="secondary-category-bar-track">
         <Link to={`/category/${encodeURIComponent(activeGroup.title)}`} className="secondary-category-pill all">
-          كل {activeGroup.title}
+          {`كل ${activeGroup.title}`}
         </Link>
 
         {activeGroup.sections.map((section) => <Link
@@ -92,51 +91,6 @@ export default function CategoriesPage() {
         </Link>)}
       </div>
     </section>}
-
-    <section className="panel-card category-directory search-style-directory">
-      <div className="section-head compact">
-        <h2>تصفح الفئات</h2>
-        <span>{categoryGroups.length} فئات رئيسية</span>
-      </div>
-
-      <button
-        type="button"
-        className={`mobile-categories-toggle${mobileFiltersOpen ? ' open' : ''}`}
-        onClick={() => setMobileFiltersOpen((current) => !current)}
-      >
-        <span>الفئات</span>
-        <ChevronDown size={16} className="mini-category-arrow" />
-      </button>
-
-      <div className={`mini-category-row${mobileFiltersOpen ? ' mobile-open' : ''}`}>
-        {categoryGroups.map((group) => {
-          const isOpen = openGroup === group.title;
-
-          return <div key={group.title} className={`mini-category-item${isOpen ? ' open' : ''}`}>
-            <button
-              type="button"
-              className="mini-category-trigger"
-              onClick={() => setOpenGroup((current) => (current === group.title ? '' : group.title))}
-            >
-              <span className="mini-category-label">
-                <span>{group.title}</span>
-              </span>
-              <ChevronDown size={16} className="mini-category-arrow" />
-            </button>
-
-            {isOpen && <div className="mini-category-sections">
-              {(group.sections || []).map((section) => <Link
-                key={section.title}
-                to={`/category/${encodeURIComponent(section.title)}`}
-                className="mini-section-link"
-              >
-                {section.title}
-              </Link>)}
-            </div>}
-          </div>;
-        })}
-      </div>
-    </section>
 
     <section className="panel-card products-panel">
       <div className="section-head">
