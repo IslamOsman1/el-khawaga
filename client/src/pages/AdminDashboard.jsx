@@ -187,6 +187,7 @@ export default function AdminDashboard() {
     () => isEmployee
       ? dashboardSections.filter((section) =>
         (section.id === 'products' && user?.permissions?.includes('manage_products')) ||
+        (section.id === 'categories' && user?.permissions?.includes('manage_products')) ||
         (section.id === 'orders' && user?.permissions?.includes('manage_orders')) ||
         (section.id === 'support' && user?.permissions?.includes('manage_support'))
       )
@@ -315,8 +316,15 @@ export default function AdminDashboard() {
     setOrders(ordersResponse.data || []);
 
     if (isEmployee) {
-      setSettingsForm(defaultSettingsForm);
+      const employeeSettings = JSON.parse(JSON.stringify(defaultSettingsForm));
       setUsers([]);
+      if (user?.permissions?.includes('manage_products')) {
+        const { data: categorySettings } = await api.get('/settings/admin/categories');
+        employeeSettings.categoryGroups = categorySettings?.categoryGroups?.length
+          ? categorySettings.categoryGroups
+          : defaultCategoryGroups;
+      }
+      setSettingsForm(employeeSettings);
       if (canManageSupport) {
         const { data: supportData } = await api.get('/support/inbox');
         setSupportConversations(supportData || []);
@@ -559,8 +567,12 @@ export default function AdminDashboard() {
     event.preventDefault();
     setSettingsSaving(true);
     try {
-      await api.put('/settings/admin', settingsForm);
-      await refresh();
+      if (isEmployee) {
+        await api.put('/settings/admin/categories', { categoryGroups: settingsForm.categoryGroups });
+      } else {
+        await api.put('/settings/admin', settingsForm);
+        await refresh();
+      }
       toast.success('تم حفظ الإعدادات');
       load();
     } catch (error) {

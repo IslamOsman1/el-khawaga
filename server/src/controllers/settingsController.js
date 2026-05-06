@@ -47,6 +47,11 @@ export const getAdminSettings = asyncHandler(async (req, res) => {
   res.json(settings);
 });
 
+export const getCategorySettings = asyncHandler(async (req, res) => {
+  const settings = await ensureStoreSettings();
+  res.json({ categoryGroups: settings.categoryGroups || [] });
+});
+
 export const updateSettings = asyncHandler(async (req, res) => {
   const settings = await ensureStoreSettings();
   const {
@@ -116,6 +121,16 @@ export const updateSettings = asyncHandler(async (req, res) => {
 
   await settings.save();
   res.json(settings);
+});
+
+export const updateCategorySettings = asyncHandler(async (req, res) => {
+  const settings = await ensureStoreSettings();
+  const { categoryGroups } = req.body;
+
+  settings.categoryGroups = sanitizeCategoryGroups(categoryGroups);
+  await settings.save();
+
+  res.json({ categoryGroups: settings.categoryGroups });
 });
 
 export const uploadBannerImage = asyncHandler(async (req, res) => {
