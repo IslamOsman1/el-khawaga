@@ -268,6 +268,12 @@ body[data-theme='light'] .profile-link-card strong{color:#18130f}
 body[data-theme='light'] .profile-detail-card span,
 body[data-theme='light'] .profile-link-card span{color:#7a6448}
 .category-page-shell{display:grid;gap:24px}
+.primary-category-bar{position:relative;margin-top:-4px}
+.primary-category-bar-track{display:flex;align-items:center;gap:12px;overflow:auto;padding:4px 2px 6px;scrollbar-width:none}
+.primary-category-bar-track::-webkit-scrollbar{display:none}
+.primary-category-pill{flex:0 0 auto;min-height:50px;padding:0 18px;border-radius:18px;border:1px solid rgba(222,183,122,.14);background:rgba(17,17,17,.94);color:#ead0a6;font-size:.94rem;font-weight:900;box-shadow:0 12px 28px rgba(0,0,0,.18);transition:.2s}
+.primary-category-pill:hover{transform:translateY(-2px);border-color:rgba(222,183,122,.28);color:#fff7ea}
+.primary-category-pill.active{background:linear-gradient(135deg,#17120d,#3b2b18 55%,#d8a556 100%);color:#fff8ec;border-color:transparent;box-shadow:0 14px 30px rgba(43,31,16,.22)}
 .category-page-hero{padding:26px 28px}
 .category-page-hero h1{margin:12px 0 10px;font-size:clamp(1.8rem,3vw,2.7rem)}
 .category-page-hero p{margin:0;max-width:640px;color:var(--muted)}
@@ -300,7 +306,9 @@ body[data-theme='light'] .profile-link-card span{color:#7a6448}
 body[data-theme='light'] .category-option-card{background:#fffaf2;border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .category-option-head strong{color:#18130f}
 body[data-theme='light'] .category-option-head small{color:#7a6448}
-@media(max-width:640px){.category-directory-grid{grid-template-columns:1fr;gap:14px}.category-option-card{padding:18px}.category-section-chip{width:100%;justify-content:flex-start}}
+body[data-theme='light'] .primary-category-pill{background:#fffaf2;color:#7a6448;border-color:rgba(184,137,78,.16);box-shadow:0 12px 28px rgba(38,29,17,.08)}
+body[data-theme='light'] .primary-category-pill:hover{color:#18130f;border-color:rgba(184,137,78,.28)}
+@media(max-width:640px){.primary-category-bar{margin-top:-8px}.primary-category-bar-track{gap:10px;padding-bottom:2px}.primary-category-pill{min-height:44px;padding:0 14px;border-radius:15px;font-size:.84rem}.category-directory-grid{grid-template-columns:1fr;gap:14px}.category-option-card{padding:18px}.category-section-chip{width:100%;justify-content:flex-start}}
 .search-options-list{display:grid;gap:14px}
 .search-option-card{background:#fffdf9;border:1px solid #f0e2ca;border-radius:26px;padding:18px 20px;display:grid;gap:14px;box-shadow:0 16px 36px rgba(41,31,16,.06)}
 .search-option-head{display:flex;align-items:center;justify-content:space-between;gap:16px}

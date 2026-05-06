@@ -55,6 +55,27 @@ export default function CategoriesPage() {
   }, [products, visibleCategories]);
 
   return <main className="app-shell home-screen market-home category-page-shell">
+    <section className="primary-category-bar">
+      <div className="primary-category-bar-track">
+        <button
+          type="button"
+          className={`primary-category-pill${!openGroup ? ' active' : ''}`}
+          onClick={() => setOpenGroup('')}
+        >
+          الكل
+        </button>
+
+        {categoryGroups.map((group) => <button
+          key={group.title}
+          type="button"
+          className={`primary-category-pill${openGroup === group.title ? ' active' : ''}`}
+          onClick={() => setOpenGroup((current) => (current === group.title ? '' : group.title))}
+        >
+          {group.title}
+        </button>)}
+      </div>
+    </section>
+
     <section className="panel-card category-directory search-style-directory">
       <div className="section-head compact">
         <h2>تصفح الفئات</h2>
