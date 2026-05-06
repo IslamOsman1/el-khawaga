@@ -51,7 +51,7 @@ export default function ProfilePage() {
             <span className="account-info-icon"><ShieldCheck size={18} /></span>
             <div>
               <strong>نوع الحساب</strong>
-              <p>{user?.role === 'admin' ? 'مدير' : 'عميل'}</p>
+              <p>{user?.role === 'admin' ? 'مدير' : user?.role === 'employee' ? 'موظف' : 'عميل'}</p>
             </div>
           </article>
           <article className="account-info-card">

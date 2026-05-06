@@ -8,6 +8,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 import { errorHandler, notFound } from './middleware/error.js';
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/support', supportRoutes);
 app.use(notFound);
 app.use(errorHandler);
 export default app;

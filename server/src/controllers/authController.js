@@ -12,6 +12,7 @@ const serializeUser = (user) => ({
   email: user.email,
   phone: user.phone,
   role: user.role,
+  permissions: user.permissions || [],
   avatar: user.avatar || '',
   walletBalance: Number(user.walletBalance || 0)
 });

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppSplash from './components/AppSplash.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
+import SupportChatWidget from './components/SupportChatWidget.jsx';
 import Home from './pages/Home.jsx';
 import CategoriesPage from './pages/CategoriesPage.jsx';
 import CategoryPage from './pages/CategoryPage.jsx';
@@ -26,7 +27,8 @@ import { useAuth } from './context/AuthContext.jsx';
 function PrivateRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
+  const canAccessAdmin = user.role === 'admin' || (user.role === 'employee' && (user.permissions || []).length > 0);
+  if (adminOnly && !canAccessAdmin) return <Navigate to="/" />;
   return children;
 }
 
@@ -86,6 +88,7 @@ export default function App() {
         <Route path="/admin" element={<PrivateRoute adminOnly><AdminDashboard /></PrivateRoute>} />
       </Routes>
     </main>
+    <SupportChatWidget />
     <Footer />
   </div>;
 }

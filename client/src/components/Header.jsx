@@ -71,7 +71,7 @@ export default function Header({ theme, onToggleTheme }) {
             {theme === 'dark' ? <Sun size={21} /> : <Moon size={21} />}
           </button>
 
-          {user?.role === 'admin' && <NavLink to="/admin" className="round-action" title="لوحة التحكم">
+          {(user?.role === 'admin' || (user?.role === 'employee' && user?.permissions?.length > 0)) && <NavLink to="/admin" className="round-action" title="لوحة التحكم">
             <LayoutDashboard size={22} />
           </NavLink>}
 

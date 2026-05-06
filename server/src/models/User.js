@@ -10,7 +10,12 @@ const userSchema = new mongoose.Schema({
   googleId: { type: String, default: '' },
   avatar: { type: String, default: '' },
   walletBalance: { type: Number, default: 0, min: 0 },
-  role: { type: String, enum: ['user', 'admin'], default: 'user' }
+  permissions: {
+    type: [String],
+    default: [],
+    enum: ['manage_products', 'manage_orders', 'manage_support']
+  },
+  role: { type: String, enum: ['user', 'admin', 'employee'], default: 'user' }
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {
