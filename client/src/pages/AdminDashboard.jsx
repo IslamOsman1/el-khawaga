@@ -10,7 +10,8 @@ import {
   ShoppingBag,
   Store,
   Tag,
-  Truck
+  Truck,
+  Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
@@ -88,7 +89,8 @@ const dashboardSections = [
   { id: 'store', label: 'إعدادات المتجر', icon: Store },
   { id: 'content', label: 'المحتوى والبنرات', icon: Palette },
   { id: 'payments', label: 'الدفع والتكامل', icon: CreditCard },
-  { id: 'orders', label: 'الطلبات', icon: ShoppingBag }
+  { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
+  { id: 'users', label: 'المستخدمون', icon: Users }
 ];
 
 const normalizeText = (value) => String(value || '').toLowerCase();
@@ -132,6 +134,7 @@ function SearchBox({ value, onChange, placeholder }) {
 export default function AdminDashboard() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
   const [productForm, setProductForm] = useState(emptyProduct);
   const [settingsForm, setSettingsForm] = useState(defaultSettingsForm);
   const [image, setImage] = useState(null);
@@ -146,7 +149,8 @@ export default function AdminDashboard() {
     store: '',
     content: '',
     payments: '',
-    orders: ''
+    orders: '',
+    users: ''
   });
   const { refresh } = useStoreSettings();
 
@@ -164,8 +168,9 @@ export default function AdminDashboard() {
     totalOrders: orders.length,
     paidOrders: orders.filter((order) => order.isPaid).length,
     openOrders: orders.filter((order) => order.status !== 'تم التسليم' && order.status !== 'ملغي').length,
-    totalProducts: products.length
-  }), [orders, products]);
+    totalProducts: products.length,
+    totalUsers: users.length
+  }), [orders, products, users]);
 
   const filteredProducts = useMemo(() => {
     const term = normalizeText(searchTerms.products);
@@ -228,6 +233,20 @@ export default function AdminDashboard() {
       ].some((value) => normalizeText(value).includes(term)));
   }, [orders, searchTerms.orders]);
 
+  const filteredUsers = useMemo(() => {
+    const term = normalizeText(searchTerms.users);
+    return [...users]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .filter((user) => !term || [
+        user.name,
+        user.email,
+        user.phone,
+        user.role,
+        user.walletBalance,
+        user.hasManualPassword ? 'manual' : 'google'
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [users, searchTerms.users]);
+
   const visibleStoreCards = useMemo(() => {
     const term = normalizeText(searchTerms.store);
     return {
@@ -263,15 +282,17 @@ export default function AdminDashboard() {
   }, [searchTerms.payments, settingsForm]);
 
   const load = async () => {
-    const [productsResponse, ordersResponse, settingsResponse] = await Promise.all([
+    const [productsResponse, ordersResponse, settingsResponse, usersResponse] = await Promise.all([
       api.get('/products?limit=100'),
       api.get('/orders'),
-      api.get('/settings/admin')
+      api.get('/settings/admin'),
+      api.get('/users')
     ]);
 
     setProducts(productsResponse.data.products || []);
     setOrders(ordersResponse.data || []);
     setSettingsForm(normalizeSettings(settingsResponse.data));
+    setUsers(usersResponse.data || []);
   };
 
   useEffect(() => {
@@ -448,6 +469,7 @@ export default function AdminDashboard() {
         <article className="admin-kpi-card"><span>طلبات مدفوعة</span><strong>{stats.paidOrders}</strong></article>
         <article className="admin-kpi-card"><span>طلبات مفتوحة</span><strong>{stats.openOrders}</strong></article>
         <article className="admin-kpi-card"><span>عدد المنتجات</span><strong>{stats.totalProducts}</strong></article>
+        <article className="admin-kpi-card"><span>عدد المستخدمين</span><strong>{stats.totalUsers}</strong></article>
       </div>
     </section>
 
@@ -733,6 +755,45 @@ export default function AdminDashboard() {
                     </select>
                   </td>
                   <td>{new Date(order.createdAt).toLocaleDateString('ar-EG')}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className={`admin-dashboard-panel${activeSection === 'users' ? ' active' : ''}`}>
+        <div className="admin-section-head">
+          <div>
+            <h2>إدارة المستخدمين</h2>
+            <p>استعرض العملاء المسجلين مع بيانات التواصل، نوع الحساب، وطريقة التسجيل ورصيد المحفظة.</p>
+          </div>
+          <Users size={18} />
+        </div>
+        <SearchBox value={searchTerms.users} onChange={(event) => changeSearch('users', event.target.value)} placeholder="ابحث عن مستخدم بالاسم أو البريد أو الهاتف..." />
+        <div className="admin-table-card">
+          <div className="table-wrap admin-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>البريد</th>
+                  <th>الهاتف</th>
+                  <th>النوع</th>
+                  <th>طريقة التسجيل</th>
+                  <th>المحفظة</th>
+                  <th>تاريخ الإنشاء</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => <tr key={user._id}>
+                  <td>{user.name || '-'}</td>
+                  <td>{user.email || '-'}</td>
+                  <td>{user.phone || '-'}</td>
+                  <td>{user.role === 'admin' ? 'مدير' : 'عميل'}</td>
+                  <td>{user.hasManualPassword ? 'يدوي' : user.googleId ? 'Google' : '-'}</td>
+                  <td>{Number(user.walletBalance || 0)} ج.م</td>
+                  <td>{new Date(user.createdAt).toLocaleDateString('ar-EG')}</td>
                 </tr>)}
               </tbody>
             </table>
