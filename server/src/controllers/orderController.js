@@ -3,10 +3,9 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
 import { ensureStoreSettings } from '../utils/storeSettings.js';
-import { calculateShippingPrice } from '../utils/shipping.js';
+import { calculateEarnedLoyaltyPoints, calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
 const CANCEL_WINDOW_MS = 5 * 60 * 1000;
-const LOYALTY_POINT_RATE = 10;
 
 const buildOrderItems = async (orderItems) => {
   const ids = orderItems.map((item) => item.product);
@@ -33,12 +32,47 @@ const canUserCancelOrder = (order) => {
   return Date.now() - new Date(order.createdAt).getTime() <= CANCEL_WINDOW_MS;
 };
 
-const calculateLoyaltyPoints = (order) => Math.max(0, Math.floor(Number(order?.itemsPrice || 0) / LOYALTY_POINT_RATE));
+const restoreUsedLoyaltyPoints = async (order) => {
+  if (!Number(order?.loyaltyPointsUsed || 0)) return;
+
+  const user = await User.findById(order.user);
+  if (!user) return;
+
+  user.loyaltyPoints = Number(user.loyaltyPoints || 0) + Number(order.loyaltyPointsUsed || 0);
+  user.loyaltyHistory = [
+    {
+      amount: Number(order.loyaltyPointsUsed || 0),
+      reason: 'استرجاع نقاط من طلب ملغي',
+      order: order._id
+    },
+    ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+  ].slice(0, 30);
+  await user.save();
+};
+
+const consumeLoyaltyPoints = async (userId, order, usedPoints) => {
+  if (!Number(usedPoints || 0)) return;
+
+  const user = await User.findById(userId);
+  if (!user) return;
+
+  user.loyaltyPoints = Math.max(0, Number(user.loyaltyPoints || 0) - Number(usedPoints || 0));
+  user.loyaltyHistory = [
+    {
+      amount: -Number(usedPoints || 0),
+      reason: 'استخدام نقاط في طلب جديد',
+      order: order._id
+    },
+    ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+  ].slice(0, 30);
+  await user.save();
+};
 
 const awardLoyaltyPointsIfEligible = async (order) => {
   if (!order || order.status !== 'تم التسليم' || order.loyaltyPointsAwarded) return;
 
-  const points = calculateLoyaltyPoints(order);
+  const settings = await ensureStoreSettings();
+  const points = calculateEarnedLoyaltyPoints(settings, order?.itemsPrice || 0);
   order.loyaltyPointsAwarded = true;
   order.loyaltyPointsAmount = points;
 
@@ -60,8 +94,10 @@ const awardLoyaltyPointsIfEligible = async (order) => {
 };
 
 export const createOrder = asyncHandler(async (req, res) => {
-  const { orderItems, shippingAddress, paymentMethod } = req.body;
-  if (!orderItems?.length) return res.status(400).json({ message: 'السلة فارغة' });
+  const { orderItems, shippingAddress, paymentMethod, discountCode, redeemLoyaltyPoints } = req.body;
+  if (!orderItems?.length) {
+    return res.status(400).json({ message: 'السلة فارغة' });
+  }
 
   const settings = await ensureStoreSettings();
   const paymentSettings = settings.payment || {};
@@ -75,8 +111,14 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   const items = await buildOrderItems(orderItems);
-  const itemsPrice = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const shippingPrice = await calculateShippingPrice(itemsPrice, shippingAddress);
+  const pricing = await calculateOrderPricing({
+    settings,
+    items,
+    shippingAddress,
+    discountCode,
+    redeemLoyaltyPoints,
+    user: req.user
+  });
 
   const order = await Order.create({
     user: req.user._id,
@@ -84,13 +126,23 @@ export const createOrder = asyncHandler(async (req, res) => {
     shippingAddress,
     paymentMethod: paymentMethod === 'online' ? 'دفع أونلاين' : 'الدفع عند الاستلام',
     paymentProvider: paymentMethod === 'online' ? (paymentSettings.onlineProvider || 'stripe') : '',
-    itemsPrice,
-    shippingPrice,
-    totalPrice: itemsPrice + shippingPrice
+    itemsPrice: pricing.itemsPrice,
+    shippingPrice: pricing.shippingPrice,
+    discountCode: pricing.discountCode,
+    discountCodeAmount: pricing.discountCodeAmount,
+    loyaltyPointsUsed: pricing.loyaltyPointsUsed,
+    loyaltyPointsDiscount: pricing.loyaltyPointsDiscount,
+    totalPrice: pricing.totalPrice
   });
 
   for (const item of items) {
     await Product.updateOne({ _id: item.product }, { $inc: { countInStock: -item.qty } });
+  }
+
+  await consumeLoyaltyPoints(req.user._id, order, pricing.loyaltyPointsUsed);
+
+  if (pricing.discountCode) {
+    await incrementDiscountCodeUsage(settings, pricing.discountCode);
   }
 
   res.status(201).json(order);
@@ -153,6 +205,7 @@ export const cancelMyOrder = asyncHandler(async (req, res) => {
     order.refundedAt = new Date();
   }
 
+  await restoreUsedLoyaltyPoints(order);
   await order.save();
 
   res.json({

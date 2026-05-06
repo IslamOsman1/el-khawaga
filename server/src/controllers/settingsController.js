@@ -50,6 +50,29 @@ const sanitizeCheckoutGovernorates = (items = []) => items
   }))
   .filter((item) => item.name && item.cities.length);
 
+const sanitizeDiscountCodes = (items = []) => items
+  .filter((item) => item && item.code)
+  .map((item) => ({
+    code: String(item.code || '').trim().toUpperCase(),
+    type: item.type === 'percent' ? 'percent' : 'fixed',
+    value: Math.max(0, Number(item.value || 0)),
+    minOrderAmount: Math.max(0, Number(item.minOrderAmount || 0)),
+    maxDiscount: Math.max(0, Number(item.maxDiscount || 0)),
+    usageLimit: Math.max(0, Number(item.usageLimit || 0)),
+    usedCount: Math.max(0, Number(item.usedCount || 0)),
+    active: item.active !== false,
+    expiresAt: item.expiresAt ? new Date(item.expiresAt) : null
+  }))
+  .filter((item) => item.code && item.value > 0);
+
+const sanitizeLoyaltySettings = (loyalty = {}) => ({
+  enabled: loyalty.enabled !== false,
+  pointsPerPoint: Math.max(1, Number(loyalty.pointsPerPoint || 10)),
+  pointValue: Math.max(0, Number(loyalty.pointValue || 0)),
+  minRedeemPoints: Math.max(0, Number(loyalty.minRedeemPoints || 0)),
+  discountCodes: sanitizeDiscountCodes(loyalty.discountCodes || [])
+});
+
 export const getPublicSettings = asyncHandler(async (req, res) => {
   const settings = await ensureStoreSettings();
   res.json(serializePublicSettings(settings));
@@ -80,6 +103,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
     categoryGroups,
     checkout,
     payment,
+    loyalty,
     integrations
   } = req.body;
 
@@ -126,6 +150,13 @@ export const updateSettings = asyncHandler(async (req, res) => {
       ...settings.payment.toObject(),
       ...payment
     };
+  }
+
+  if (loyalty) {
+    settings.loyalty = sanitizeLoyaltySettings({
+      ...settings.loyalty?.toObject?.(),
+      ...loyalty
+    });
   }
 
   if (integrations) {

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   CreditCard,
   FolderTree,
+  Gift,
   MapPin,
   MessageCircle,
   Package,
@@ -86,6 +87,25 @@ const defaultSettingsForm = {
     currency: 'egp',
     stripePublishableKey: '',
     stripeSecretKey: ''
+  },
+  loyalty: {
+    enabled: true,
+    pointsPerPoint: 10,
+    pointValue: 0.1,
+    minRedeemPoints: 50,
+    discountCodes: [
+      {
+        code: '',
+        type: 'fixed',
+        value: '',
+        minOrderAmount: '',
+        maxDiscount: '',
+        usageLimit: '',
+        usedCount: 0,
+        active: true,
+        expiresAt: ''
+      }
+    ]
   }
 };
 
@@ -96,6 +116,7 @@ const dashboardSections = [
   { id: 'checkout', label: 'إعداد الطلب', icon: MapPin },
   { id: 'content', label: 'المحتوى والبنرات', icon: Palette },
   { id: 'payments', label: 'الدفع والتكامل', icon: CreditCard },
+  { id: 'loyalty', label: 'النقاط وأكواد الخصم', icon: Gift },
   { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
   { id: 'support', label: 'الدعم', icon: MessageCircle },
   { id: 'users', label: 'المستخدمون', icon: Users }
@@ -130,6 +151,16 @@ const normalizeSettings = (data) => ({
   payment: {
     ...defaultSettingsForm.payment,
     ...(data.payment || {})
+  },
+  loyalty: {
+    ...defaultSettingsForm.loyalty,
+    ...(data.loyalty || {}),
+    discountCodes: data.loyalty?.discountCodes?.length
+      ? data.loyalty.discountCodes.map((item) => ({
+        ...item,
+        expiresAt: item.expiresAt ? String(item.expiresAt).slice(0, 10) : ''
+      }))
+      : defaultSettingsForm.loyalty.discountCodes
   }
 });
 
@@ -190,6 +221,7 @@ export default function AdminDashboard() {
     content: '',
     checkout: '',
     payments: '',
+    loyalty: '',
     orders: '',
     support: '',
     users: ''
@@ -288,6 +320,20 @@ export default function AdminDashboard() {
         ...(governorate.cities || [])
       ].some((value) => normalizeText(value).includes(term)));
   }, [settingsForm.checkout.governorates, searchTerms.checkout]);
+
+  const filteredDiscountCodes = useMemo(() => {
+    const term = normalizeText(searchTerms.loyalty);
+    return (settingsForm.loyalty?.discountCodes || [])
+      .map((code, index) => ({ code, index }))
+      .filter(({ code }) => !term || [
+        code.code,
+        code.type,
+        code.value,
+        code.minOrderAmount,
+        code.maxDiscount,
+        code.usageLimit
+      ].some((value) => normalizeText(value).includes(term)));
+  }, [searchTerms.loyalty, settingsForm.loyalty?.discountCodes]);
 
   const filteredOrders = useMemo(() => {
     const term = normalizeText(searchTerms.orders);
@@ -629,6 +675,39 @@ export default function AdminDashboard() {
       }
       return next;
     });
+  };
+
+  const addDiscountCode = () => {
+    setSettingsForm((current) => ({
+      ...current,
+      loyalty: {
+        ...current.loyalty,
+        discountCodes: [
+          {
+            code: '',
+            type: 'fixed',
+            value: '',
+            minOrderAmount: '',
+            maxDiscount: '',
+            usageLimit: '',
+            usedCount: 0,
+            active: true,
+            expiresAt: ''
+          },
+          ...(current.loyalty?.discountCodes || [])
+        ]
+      }
+    }));
+  };
+
+  const removeDiscountCode = (discountIndex) => {
+    setSettingsForm((current) => ({
+      ...current,
+      loyalty: {
+        ...current.loyalty,
+        discountCodes: (current.loyalty?.discountCodes || []).filter((_, index) => index !== discountIndex)
+      }
+    }));
   };
 
   const saveSettings = async (event) => {
@@ -1033,6 +1112,144 @@ export default function AdminDashboard() {
                   <label className="admin-toggle-pill"><input type="checkbox" checked={settingsForm.payment.onlinePaymentEnabled} onChange={(event) => changeSettingsField(['payment', 'onlinePaymentEnabled'], event.target.checked)} /> تفعيل الدفع أونلاين</label>
                 </div>
                 <SaveSectionButton saving={settingsSaving} label="حفظ إعدادات الدفع" />
+              </article>
+            </div>
+          </form>
+        </section>
+
+        <section className={`admin-dashboard-panel${activeSection === 'loyalty' ? ' active' : ''}`}>
+          <div className="admin-section-head">
+            <div>
+              <h2>النقاط وأكواد الخصم</h2>
+              <p>تحكم في قيمة نقاط الولاء، معدل احتسابها، وأنشئ أكواد خصم فعالة للموقع.</p>
+            </div>
+            <Gift size={18} />
+          </div>
+          <SearchBox value={searchTerms.loyalty} onChange={(event) => changeSearch('loyalty', event.target.value)} placeholder="ابحث عن كود خصم أو إعداد نقاط..." />
+          <form className="admin-dashboard-form" onSubmit={saveSettings}>
+            <div className="admin-settings-cluster">
+              <article className="admin-setting-card">
+                <div className="admin-setting-card-head"><Gift size={18} /><strong>إعدادات نقاط الولاء</strong></div>
+                <div className="admin-dashboard-form-grid">
+                  <Field label="كل كام جنيه = نقطة واحدة">
+                    <input
+                      type="number"
+                      min="1"
+                      value={settingsForm.loyalty.pointsPerPoint}
+                      onChange={(event) => changeSettingsField(['loyalty', 'pointsPerPoint'], Number(event.target.value))}
+                    />
+                  </Field>
+                  <Field label="قيمة النقطة بالجنيه">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={settingsForm.loyalty.pointValue}
+                      onChange={(event) => changeSettingsField(['loyalty', 'pointValue'], Number(event.target.value))}
+                    />
+                  </Field>
+                  <Field label="أقل عدد نقاط للاستبدال">
+                    <input
+                      type="number"
+                      min="0"
+                      value={settingsForm.loyalty.minRedeemPoints}
+                      onChange={(event) => changeSettingsField(['loyalty', 'minRedeemPoints'], Number(event.target.value))}
+                    />
+                  </Field>
+                </div>
+                <div className="admin-toggle-row">
+                  <label className="admin-toggle-pill">
+                    <input
+                      type="checkbox"
+                      checked={settingsForm.loyalty.enabled}
+                      onChange={(event) => changeSettingsField(['loyalty', 'enabled'], event.target.checked)}
+                    />
+                    تفعيل نقاط الولاء
+                  </label>
+                </div>
+                <SaveSectionButton saving={settingsSaving} label="حفظ إعدادات النقاط" />
+              </article>
+
+              <article className="admin-setting-card">
+                <div className="admin-setting-card-head"><Tag size={18} /><strong>أكواد الخصم</strong></div>
+                <button type="button" className="secondary-btn" onClick={addDiscountCode}>إضافة كود خصم</button>
+                <div className="admin-slides-grid enhanced">
+                  {filteredDiscountCodes.map(({ code, index }) => (
+                    <div key={`discount-${index}`} className="admin-slide-card refined">
+                      <strong>كود خصم {index + 1}</strong>
+                      <Field label="الكود">
+                        <input
+                          value={code.code}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'code'], event.target.value.toUpperCase())}
+                          placeholder="SAVE10"
+                        />
+                      </Field>
+                      <Field label="نوع الخصم">
+                        <select value={code.type} onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'type'], event.target.value)}>
+                          <option value="fixed">مبلغ ثابت</option>
+                          <option value="percent">نسبة مئوية</option>
+                        </select>
+                      </Field>
+                      <Field label="قيمة الخصم">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={code.value}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'value'], event.target.value)}
+                        />
+                      </Field>
+                      <Field label="الحد الأدنى للطلب">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={code.minOrderAmount}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'minOrderAmount'], event.target.value)}
+                        />
+                      </Field>
+                      <Field label="أقصى خصم">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={code.maxDiscount}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'maxDiscount'], event.target.value)}
+                        />
+                      </Field>
+                      <Field label="حد الاستخدام">
+                        <input
+                          type="number"
+                          min="0"
+                          value={code.usageLimit}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'usageLimit'], event.target.value)}
+                        />
+                      </Field>
+                      <Field label="عدد مرات الاستخدام">
+                        <input value={code.usedCount || 0} readOnly />
+                      </Field>
+                      <Field label="تاريخ الانتهاء">
+                        <input
+                          type="date"
+                          value={code.expiresAt || ''}
+                          onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'expiresAt'], event.target.value)}
+                        />
+                      </Field>
+                      <div className="admin-toggle-row">
+                        <label className="admin-toggle-pill">
+                          <input
+                            type="checkbox"
+                            checked={code.active !== false}
+                            onChange={(event) => changeSettingsField(['loyalty', 'discountCodes', index, 'active'], event.target.checked)}
+                          />
+                          الكود مفعل
+                        </label>
+                      </div>
+                      <button type="button" className="table-action-btn delete" onClick={() => removeDiscountCode(index)}>حذف الكود</button>
+                    </div>
+                  ))}
+                </div>
+                <SaveSectionButton saving={settingsSaving} label="حفظ أكواد الخصم" />
               </article>
             </div>
           </form>

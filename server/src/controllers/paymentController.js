@@ -2,8 +2,9 @@ import asyncHandler from 'express-async-handler';
 import Stripe from 'stripe';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import User from '../models/User.js';
 import { ensureStoreSettings } from '../utils/storeSettings.js';
-import { calculateShippingPrice } from '../utils/shipping.js';
+import { calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
 const getStripeClient = async () => {
   const settings = await ensureStoreSettings();
@@ -46,28 +47,68 @@ const buildOrderItems = async (orderItems) => {
   });
 };
 
+const consumeLoyaltyPoints = async (userId, order, usedPoints) => {
+  if (!Number(usedPoints || 0)) return;
+
+  const user = await User.findById(userId);
+  if (!user) return;
+
+  user.loyaltyPoints = Math.max(0, Number(user.loyaltyPoints || 0) - Number(usedPoints || 0));
+  user.loyaltyHistory = [
+    {
+      amount: -Number(usedPoints || 0),
+      reason: 'استخدام نقاط في طلب مدفوع أونلاين',
+      order: order._id
+    },
+    ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+  ].slice(0, 30);
+  await user.save();
+};
+
 export const createStripeCheckoutSession = asyncHandler(async (req, res) => {
-  const { orderItems, shippingAddress } = req.body;
+  const { orderItems, shippingAddress, discountCode, redeemLoyaltyPoints } = req.body;
   if (!orderItems?.length) {
     return res.status(400).json({ message: 'السلة فارغة' });
   }
 
   const items = await buildOrderItems(orderItems);
-  const itemsPrice = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const shippingPrice = await calculateShippingPrice(itemsPrice, shippingAddress);
-  const totalPrice = itemsPrice + shippingPrice;
-
   const { stripe, settings } = await getStripeClient();
+  const pricing = await calculateOrderPricing({
+    settings,
+    items,
+    shippingAddress,
+    discountCode,
+    redeemLoyaltyPoints,
+    user: req.user
+  });
+  if (pricing.totalPrice <= 0) {
+    return res.status(400).json({ message: 'إجمالي الطلب بعد الخصومات يساوي صفرًا، اختر الدفع عند الاستلام لإتمام الطلب' });
+  }
   const origin = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
 
   const payload = JSON.stringify({
     userId: req.user._id.toString(),
     shippingAddress,
     items,
-    itemsPrice,
-    shippingPrice,
-    totalPrice
+    discountCode: pricing.discountCode,
+    discountCodeAmount: pricing.discountCodeAmount,
+    loyaltyPointsUsed: pricing.loyaltyPointsUsed,
+    loyaltyPointsDiscount: pricing.loyaltyPointsDiscount,
+    itemsPrice: pricing.itemsPrice,
+    shippingPrice: pricing.shippingPrice,
+    totalPrice: pricing.totalPrice
   });
+
+  const chargeableItems = [{
+    quantity: 1,
+    price_data: {
+      currency: settings.payment?.currency || 'egp',
+      unit_amount: Math.round(pricing.totalPrice * 100),
+      product_data: {
+        name: 'إجمالي الطلب بعد الخصومات'
+      }
+    }
+  }];
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -77,25 +118,7 @@ export const createStripeCheckoutSession = asyncHandler(async (req, res) => {
     metadata: {
       checkoutPayload: payload
     },
-    line_items: items.map((item) => ({
-      quantity: item.qty,
-      price_data: {
-        currency: settings.payment?.currency || 'egp',
-        unit_amount: Math.round(item.price * 100),
-        product_data: {
-          name: item.name
-        }
-      }
-    })).concat(shippingPrice ? [{
-      quantity: 1,
-      price_data: {
-        currency: settings.payment?.currency || 'egp',
-        unit_amount: Math.round(shippingPrice * 100),
-        product_data: {
-          name: 'رسوم الشحن'
-        }
-      }
-    }] : [])
+    line_items: chargeableItems
   });
 
   res.json({ url: session.url, sessionId: session.id });
@@ -142,6 +165,10 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
       paymentReference: session.payment_intent?.toString() || session.id,
       itemsPrice: payload.itemsPrice,
       shippingPrice: payload.shippingPrice,
+      discountCode: payload.discountCode,
+      discountCodeAmount: payload.discountCodeAmount,
+      loyaltyPointsUsed: payload.loyaltyPointsUsed,
+      loyaltyPointsDiscount: payload.loyaltyPointsDiscount,
       totalPrice: payload.totalPrice,
       isPaid: true,
       paidAt: new Date()
@@ -149,6 +176,12 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
 
     for (const item of refreshedItems) {
       await Product.updateOne({ _id: item.product }, { $inc: { countInStock: -item.qty } });
+    }
+
+    await consumeLoyaltyPoints(payload.userId, order, payload.loyaltyPointsUsed);
+
+    if (payload.discountCode) {
+      await incrementDiscountCodeUsage(settings, payload.discountCode);
     }
   }
 

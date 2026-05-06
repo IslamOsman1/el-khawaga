@@ -25,6 +25,10 @@ const orderSchema = new mongoose.Schema({
   paymentReference: { type: String, default: '' },
   itemsPrice: { type: Number, required: true },
   shippingPrice: { type: Number, required: true, default: 0 },
+  discountCode: { type: String, default: '' },
+  discountCodeAmount: { type: Number, default: 0 },
+  loyaltyPointsUsed: { type: Number, default: 0 },
+  loyaltyPointsDiscount: { type: Number, default: 0 },
   totalPrice: { type: Number, required: true },
   status: {
     type: String,

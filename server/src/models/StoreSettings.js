@@ -38,6 +38,18 @@ const checkoutGovernorateSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const discountCodeSchema = new mongoose.Schema({
+  code: { type: String, default: '' },
+  type: { type: String, enum: ['fixed', 'percent'], default: 'fixed' },
+  value: { type: Number, default: 0 },
+  minOrderAmount: { type: Number, default: 0 },
+  maxDiscount: { type: Number, default: 0 },
+  usageLimit: { type: Number, default: 0 },
+  usedCount: { type: Number, default: 0 },
+  active: { type: Boolean, default: true },
+  expiresAt: { type: Date, default: null }
+}, { _id: false });
+
 const storeSettingsSchema = new mongoose.Schema({
   singleton: { type: String, default: 'default', unique: true },
   storeName: { type: String, default: 'Al Wekala Market' },
@@ -88,6 +100,16 @@ const storeSettingsSchema = new mongoose.Schema({
     currency: { type: String, default: 'egp' },
     stripePublishableKey: { type: String, default: '' },
     stripeSecretKey: { type: String, default: '' }
+  },
+  loyalty: {
+    enabled: { type: Boolean, default: true },
+    pointsPerPoint: { type: Number, default: 10 },
+    pointValue: { type: Number, default: 0.1 },
+    minRedeemPoints: { type: Number, default: 50 },
+    discountCodes: {
+      type: [discountCodeSchema],
+      default: []
+    }
   },
   integrations: {
     googleClientId: { type: String, default: '' }

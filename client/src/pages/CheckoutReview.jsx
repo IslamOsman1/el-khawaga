@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
+import { calculateCheckoutTotals } from '../utils/pricing.js';
 import { calculateShippingForGovernorate } from '../utils/shipping.js';
 
 const checkoutDraftKey = 'checkout-draft';
@@ -11,6 +13,7 @@ const checkoutDraftKey = 'checkout-draft';
 export default function CheckoutReview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, refreshProfile } = useAuth();
   const { items, clearCart, totals } = useCart();
   const { settings } = useStoreSettings();
   const [submitting, setSubmitting] = useState(false);
@@ -44,27 +47,39 @@ export default function CheckoutReview() {
     [settings, draft, totals.itemsPrice]
   );
 
+  const estimatedTotals = useMemo(
+    () => calculateCheckoutTotals({
+      itemsPrice: totals.itemsPrice,
+      shippingPrice,
+      settings,
+      user,
+      discountCode: draft?.discountCode,
+      redeemLoyaltyPoints: draft?.redeemLoyaltyPoints
+    }),
+    [draft, settings, shippingPrice, totals.itemsPrice, user]
+  );
+
   const submit = async () => {
     if (!draft) return;
     setSubmitting(true);
 
     try {
-      if (draft.paymentMethod === 'online') {
-        const { data } = await api.post('/payments/stripe/checkout-session', {
-          orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
-          shippingAddress: draft.shippingAddress
-        });
+      const payload = {
+        orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
+        shippingAddress: draft.shippingAddress,
+        paymentMethod: draft.paymentMethod,
+        discountCode: draft.discountCode,
+        redeemLoyaltyPoints: draft.redeemLoyaltyPoints
+      };
 
+      if (draft.paymentMethod === 'online') {
+        const { data } = await api.post('/payments/stripe/checkout-session', payload);
         window.location.href = data.url;
         return;
       }
 
-      await api.post('/orders', {
-        orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
-        shippingAddress: draft.shippingAddress,
-        paymentMethod: draft.paymentMethod
-      });
-
+      await api.post('/orders', payload);
+      await refreshProfile().catch(() => undefined);
       clearCart();
       sessionStorage.removeItem(checkoutDraftKey);
       toast.success('تم إنشاء الطلب');
@@ -104,6 +119,14 @@ export default function CheckoutReview() {
             <p>{orderLabel}</p>
           </div>
 
+          {(draft.discountCode || draft.redeemLoyaltyPoints) ? (
+            <div className="checkout-review-block">
+              <strong>الخصومات المطبقة</strong>
+              {draft.discountCode ? <p>كود الخصم: {draft.discountCode}</p> : null}
+              {draft.redeemLoyaltyPoints ? <p>استخدام نقاط الولاء: {estimatedTotals.loyaltyPointsUsed} نقطة</p> : null}
+            </div>
+          ) : null}
+
           <div className="checkout-review-block">
             <strong>المنتجات</strong>
             <div className="checkout-review-items">
@@ -128,7 +151,9 @@ export default function CheckoutReview() {
           <h2>ملخص الطلب</h2>
           <p>المنتجات: {totals.itemsPrice} ج.م</p>
           <p>الشحن: {shippingPrice} ج.م</p>
-          <strong>الإجمالي: {totals.itemsPrice + shippingPrice} ج.م</strong>
+          {estimatedTotals.loyaltyPointsDiscount > 0 ? <p>خصم النقاط: -{estimatedTotals.loyaltyPointsDiscount} ج.م</p> : null}
+          {draft.discountCode ? <p className="muted">سيتم اعتماد كود الخصم بعد التحقق منه من السيرفر</p> : null}
+          <strong>الإجمالي المتوقع: {estimatedTotals.totalPrice} ج.م</strong>
         </aside>
       </div>
     </div>

@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
+import { calculateCheckoutTotals } from '../utils/pricing.js';
 import { calculateShippingForGovernorate } from '../utils/shipping.js';
 
 const checkoutDraftKey = 'checkout-draft';
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { items, totals } = useCart();
   const { settings } = useStoreSettings();
   const [shippingAddress, setAddress] = useState({
@@ -19,6 +22,8 @@ export default function Checkout() {
     notes: ''
   });
   const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [discountCode, setDiscountCode] = useState('');
+  const [redeemLoyaltyPoints, setRedeemLoyaltyPoints] = useState(false);
 
   const availableGovernorates = useMemo(
     () => settings?.checkout?.governorates || [],
@@ -37,6 +42,18 @@ export default function Checkout() {
     [settings, shippingAddress.city, totals.itemsPrice]
   );
 
+  const estimatedTotals = useMemo(
+    () => calculateCheckoutTotals({
+      itemsPrice: totals.itemsPrice,
+      shippingPrice,
+      settings,
+      user,
+      discountCode,
+      redeemLoyaltyPoints
+    }),
+    [discountCode, redeemLoyaltyPoints, settings, shippingPrice, totals.itemsPrice, user]
+  );
+
   useEffect(() => {
     const draft = sessionStorage.getItem(checkoutDraftKey);
     if (!draft) return;
@@ -44,6 +61,8 @@ export default function Checkout() {
       const parsed = JSON.parse(draft);
       if (parsed.shippingAddress) setAddress(parsed.shippingAddress);
       if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+      if (parsed.discountCode) setDiscountCode(parsed.discountCode);
+      if (parsed.redeemLoyaltyPoints) setRedeemLoyaltyPoints(Boolean(parsed.redeemLoyaltyPoints));
     } catch {
       return;
     }
@@ -83,7 +102,12 @@ export default function Checkout() {
 
   const submit = (event) => {
     event.preventDefault();
-    const draft = { shippingAddress, paymentMethod };
+    const draft = {
+      shippingAddress,
+      paymentMethod,
+      discountCode,
+      redeemLoyaltyPoints
+    };
     sessionStorage.setItem(checkoutDraftKey, JSON.stringify(draft));
     navigate('/checkout/review');
   };
@@ -167,6 +191,27 @@ export default function Checkout() {
             />
           ) : null}
 
+          <div className="checkout-loyalty-box">
+            <strong>النقاط وأكواد الخصم</strong>
+            <input
+              value={discountCode}
+              onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+              placeholder="أدخل كود الخصم"
+            />
+            {settings?.loyalty?.enabled !== false ? (
+              <label className="admin-toggle-pill checkout-points-toggle">
+                <input
+                  type="checkbox"
+                  checked={redeemLoyaltyPoints}
+                  onChange={(event) => setRedeemLoyaltyPoints(event.target.checked)}
+                  disabled={Number(user?.loyaltyPoints || 0) < Number(settings?.loyalty?.minRedeemPoints || 0)}
+                />
+                استخدام نقاط الولاء
+                <span>({Number(user?.loyaltyPoints || 0)} نقطة)</span>
+              </label>
+            ) : null}
+          </div>
+
           <div className="checkout-payment-options">
             {paymentOptions.map((option) => (
               <label key={option.value} className={`payment-option-card${paymentMethod === option.value ? ' active' : ''}`}>
@@ -190,7 +235,11 @@ export default function Checkout() {
           <h2>ملخص الطلب</h2>
           <p>المنتجات: {totals.itemsPrice} ج.م</p>
           <p>الشحن: {shippingPrice} ج.م</p>
-          <strong>الإجمالي: {totals.itemsPrice + shippingPrice} ج.م</strong>
+          {redeemLoyaltyPoints && estimatedTotals.loyaltyPointsDiscount > 0 ? (
+            <p>خصم النقاط: -{estimatedTotals.loyaltyPointsDiscount} ج.م</p>
+          ) : null}
+          {discountCode ? <p className="muted">سيتم التحقق من كود الخصم عند تأكيد الطلب</p> : null}
+          <strong>الإجمالي المتوقع: {estimatedTotals.totalPrice} ج.م</strong>
         </aside>
       </div>
     </div>

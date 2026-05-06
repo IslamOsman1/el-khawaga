@@ -107,6 +107,14 @@ const defaultCheckoutGovernorates = [
   }
 ];
 
+const defaultLoyaltySettings = {
+  enabled: true,
+  pointsPerPoint: 10,
+  pointValue: 0.1,
+  minRedeemPoints: 50,
+  discountCodes: []
+};
+
 export const ensureStoreSettings = async () => {
   let settings = await StoreSettings.findOne({ singleton: 'default' });
   if (!settings) {
@@ -119,7 +127,8 @@ export const ensureStoreSettings = async () => {
       categoryGroups: defaultCategoryGroups,
       checkout: {
         governorates: defaultCheckoutGovernorates
-      }
+      },
+      loyalty: defaultLoyaltySettings
     });
   } else {
     let changed = false;
@@ -153,6 +162,30 @@ export const ensureStoreSettings = async () => {
       changed = true;
     }
 
+    if (!settings.loyalty) {
+      settings.loyalty = defaultLoyaltySettings;
+      changed = true;
+    } else {
+      const normalizedCodes = Array.isArray(settings.loyalty.discountCodes)
+        ? settings.loyalty.discountCodes
+        : [];
+
+      if (
+        typeof settings.loyalty.enabled !== 'boolean' ||
+        typeof settings.loyalty.pointsPerPoint !== 'number' ||
+        typeof settings.loyalty.pointValue !== 'number' ||
+        typeof settings.loyalty.minRedeemPoints !== 'number' ||
+        settings.loyalty.discountCodes !== normalizedCodes
+      ) {
+        settings.loyalty = {
+          ...defaultLoyaltySettings,
+          ...settings.loyalty.toObject?.(),
+          discountCodes: normalizedCodes
+        };
+        changed = true;
+      }
+    }
+
     if (changed) await settings.save();
   }
 
@@ -176,6 +209,12 @@ export const serializePublicSettings = (settings) => ({
     onlinePaymentEnabled: settings.payment?.onlinePaymentEnabled,
     onlineProvider: settings.payment?.onlineProvider,
     currency: settings.payment?.currency
+  },
+  loyalty: {
+    enabled: settings.loyalty?.enabled !== false,
+    pointsPerPoint: Number(settings.loyalty?.pointsPerPoint || defaultLoyaltySettings.pointsPerPoint),
+    pointValue: Number(settings.loyalty?.pointValue || defaultLoyaltySettings.pointValue),
+    minRedeemPoints: Number(settings.loyalty?.minRedeemPoints || defaultLoyaltySettings.minRedeemPoints)
   },
   googleClientId: process.env.GOOGLE_CLIENT_ID || ''
 });
