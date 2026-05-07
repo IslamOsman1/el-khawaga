@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CreditCard,
+  FileText,
   FolderTree,
   Gift,
   MapPin,
@@ -13,6 +14,8 @@ import {
   ShoppingBag,
   Store,
   Tag,
+  Truck,
+  Undo2,
   Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -129,6 +132,7 @@ const dashboardSections = [
   { id: 'store', label: 'إعدادات المتجر', icon: Store },
   { id: 'checkout', label: 'إعداد الطلب', icon: MapPin },
   { id: 'content', label: 'المحتوى والبنرات', icon: Palette },
+  { id: 'policies', label: 'السياسات', icon: ShieldCheck },
   { id: 'payments', label: 'الدفع والتكامل', icon: CreditCard },
   { id: 'loyalty', label: 'النقاط وأكواد الخصم', icon: Gift },
   { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
@@ -140,6 +144,13 @@ const permissionOptions = [
   { key: 'manage_products', label: 'إدارة المنتجات' },
   { key: 'manage_orders', label: 'إدارة الطلبات' },
   { key: 'manage_support', label: 'إدارة الدعم' }
+];
+
+const policyDefinitions = [
+  { key: 'privacy', label: 'سياسة الخصوصية', icon: ShieldCheck },
+  { key: 'terms', label: 'الشروط والأحكام', icon: FileText },
+  { key: 'shipping', label: 'سياسة الشحن والتوصيل', icon: Truck },
+  { key: 'refund', label: 'سياسة الاسترجاع والاستبدال', icon: Undo2 }
 ];
 
 const orderStatuses = ['جديد', 'قيد التجهيز', 'في الطريق', 'تم التسليم', 'ملغي'];
@@ -260,6 +271,7 @@ export default function AdminDashboard() {
     categories: '',
     store: '',
     content: '',
+    policies: '',
     checkout: '',
     payments: '',
     loyalty: '',
@@ -351,6 +363,19 @@ export default function AdminDashboard() {
         item.image
       ].some((value) => normalizeText(value).includes(term)));
   }, [settingsForm.home.featuredCategories, searchTerms.content]);
+
+  const filteredPolicies = useMemo(() => {
+    const term = normalizeText(searchTerms.policies);
+    return policyDefinitions.filter(({ key, label }) => {
+      const policy = settingsForm.policies?.[key];
+      return !term || [
+        label,
+        policy?.title,
+        policy?.description,
+        ...(policy?.sections || []).flatMap((section) => [section.title, section.body])
+      ].some((value) => normalizeText(value).includes(term));
+    });
+  }, [searchTerms.policies, settingsForm.policies]);
 
   const filteredCheckoutGovernorates = useMemo(() => {
     const term = normalizeText(searchTerms.checkout);
@@ -1267,6 +1292,67 @@ export default function AdminDashboard() {
                 </div>
                 <SaveSectionButton saving={settingsSaving} label="حفظ الفئات المميزة" />
               </article>
+            </div>
+          </form>
+        </section>
+
+        <section className={`admin-dashboard-panel${activeSection === 'policies' ? ' active' : ''}`}>
+          <div className="admin-section-head">
+            <div>
+              <h2>السياسات</h2>
+              <p>تحكم في صفحات الخصوصية والشروط والشحن والاسترجاع من مكان واحد.</p>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <SearchBox value={searchTerms.policies} onChange={(event) => changeSearch('policies', event.target.value)} placeholder="ابحث داخل صفحات السياسات..." />
+          <form className="admin-dashboard-form" onSubmit={saveSettings}>
+            <div className="admin-settings-cluster">
+              {filteredPolicies.map(({ key, label, icon: Icon }) => {
+                const policy = settingsForm.policies?.[key] || { title: '', description: '', sections: [{ title: '', body: '' }] };
+                return (
+                  <article key={key} className="admin-setting-card">
+                    <div className="admin-setting-card-head"><Icon size={18} /><strong>{label}</strong></div>
+                    <div className="admin-text-grid enhanced">
+                      <Field label="عنوان الصفحة">
+                        <input value={policy.title} onChange={(event) => changeSettingsField(['policies', key, 'title'], event.target.value)} />
+                      </Field>
+                      <Field label="وصف مختصر">
+                        <textarea value={policy.description} onChange={(event) => changeSettingsField(['policies', key, 'description'], event.target.value)} />
+                      </Field>
+                    </div>
+
+                    <div className="admin-category-inventory">
+                      <div className="admin-category-inventory-head">
+                        <strong>بنود الصفحة</strong>
+                        <button type="button" className="table-action-btn edit" onClick={() => addPolicySection(key)}>إضافة بند</button>
+                      </div>
+
+                      <div className="admin-slides-grid enhanced">
+                        {(policy.sections || []).map((section, sectionIndex) => (
+                          <div key={`${key}-section-${sectionIndex}`} className="admin-slide-card refined">
+                            <strong>بند {sectionIndex + 1}</strong>
+                            <Field label="عنوان البند">
+                              <input
+                                value={section.title}
+                                onChange={(event) => changeSettingsField(['policies', key, 'sections', sectionIndex, 'title'], event.target.value)}
+                              />
+                            </Field>
+                            <Field label="محتوى البند">
+                              <textarea
+                                value={section.body}
+                                onChange={(event) => changeSettingsField(['policies', key, 'sections', sectionIndex, 'body'], event.target.value)}
+                              />
+                            </Field>
+                            <button type="button" className="table-action-btn danger" onClick={() => removePolicySection(key, sectionIndex)}>حذف البند</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <SaveSectionButton saving={settingsSaving} label={`حفظ ${label}`} />
+                  </article>
+                );
+              })}
             </div>
           </form>
         </section>

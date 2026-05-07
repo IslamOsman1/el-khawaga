@@ -15,6 +15,7 @@ export default function SupportChatWidget() {
   const [sending, setSending] = useState(false);
   const previousUnreadRef = useRef(0);
   const audioContextRef = useRef(null);
+  const inputRef = useRef(null);
 
   const isCustomer = user?.role === 'user';
   const supportName = useMemo(
@@ -52,9 +53,10 @@ export default function SupportChatWidget() {
   };
 
   const loadConversation = async () => {
-    if (!isCustomer) return;
+    if (!isCustomer) return null;
     const { data } = await api.get('/support/my');
     setConversation(data);
+    return data;
   };
 
   useEffect(() => {
@@ -77,6 +79,12 @@ export default function SupportChatWidget() {
   }, [open, unreadCount]);
 
   useEffect(() => {
+    if (!open) return undefined;
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 120);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
     if (!isCustomer) return;
     if (unreadCount > previousUnreadRef.current && !open) {
       playNotificationTone();
@@ -84,6 +92,29 @@ export default function SupportChatWidget() {
     }
     previousUnreadRef.current = unreadCount;
   }, [isCustomer, open, unreadCount]);
+
+  useEffect(() => {
+    const handlePrefill = async (event) => {
+      const text = event?.detail?.text?.trim() || '';
+      setOpen(true);
+      setMessage(text);
+
+      if (!isCustomer) return;
+
+      try {
+        const data = await loadConversation();
+        if (data?.status === 'closed') {
+          const reopened = await api.put('/support/my/status', { status: 'open' });
+          setConversation(reopened.data);
+        }
+      } catch {
+        // The widget still opens with the prefilled text.
+      }
+    };
+
+    window.addEventListener('support-chat:prefill', handlePrefill);
+    return () => window.removeEventListener('support-chat:prefill', handlePrefill);
+  }, [isCustomer]);
 
   const submitMessage = async (event) => {
     event.preventDefault();
@@ -165,6 +196,7 @@ export default function SupportChatWidget() {
 
               <form className="support-chat-form" onSubmit={submitMessage}>
                 <input
+                  ref={inputRef}
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   placeholder={conversation?.status === 'closed' ? 'أعد فتح المحادثة أولًا...' : 'اكتب رسالتك هنا...'}

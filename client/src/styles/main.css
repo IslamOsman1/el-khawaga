@@ -133,8 +133,8 @@ body[data-theme='light'] .theme-toggle:hover{color:var(--dark)}
 .market-category-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .market-category-card{background:#fffdf9;border:1px solid #f0e2ca;border-radius:28px;padding:18px 16px;display:grid;gap:8px;text-align:center;transition:.2s;box-shadow:0 16px 36px rgba(41,31,16,.06);min-height:176px;align-content:center}
 .market-category-card:hover{transform:translateY(-4px);border-color:#e2bf84}
-.market-category-card.visual{position:relative;background-size:cover;background-position:center;overflow:hidden;border-color:rgba(222,183,122,.14);min-height:200px}
-.market-category-card.visual::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.7))}
+.market-category-card.visual{position:relative;background-size:cover;background-position:center;overflow:hidden;border-color:rgba(222,183,122,.14);min-height:200px;isolation:isolate}
+.market-category-card.visual::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.18) 42%,rgba(0,0,0,.58))}
 .market-category-emoji{width:56px;height:56px;border-radius:18px;background:linear-gradient(180deg,#fff3df,#f2e0bf);display:grid;place-items:center;margin:0 auto;font-size:1.7rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
 .market-category-card strong{color:#17120d;font-size:.95rem}
 .market-category-card small{color:#7b6954;line-height:1.55;font-size:.86rem}
@@ -164,6 +164,7 @@ body[data-theme='light'] .market-categories,
 body[data-theme='light'] .products-panel{background:var(--surface)}
 body[data-theme='light'] .market-feature-card,
 body[data-theme='light'] .market-category-card{background:#fffaf2;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .market-category-card.visual::after{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(24,19,15,.14) 42%,rgba(24,19,15,.42))}
 body[data-theme='light'] .market-feature-card h3,
 body[data-theme='light'] .market-category-card strong{color:#18130f}
 body[data-theme='light'] .market-feature-card p,
@@ -520,8 +521,12 @@ body[data-theme='light'] .footer-social-link:hover{color:#18130f;border-color:rg
 .order-showcase-card{background:#fffdf9;border:1px solid #f0e2ca;border-radius:24px;padding:18px 20px;display:grid;gap:16px;box-shadow:0 16px 36px rgba(41,31,16,.06)}
 .order-wallet-note{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:16px;background:#f7eddc;color:#8a622e;font-weight:800}
 .order-actions-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.order-cancel-btn{min-height:42px}
-.order-cancel-note{font-size:.88rem}
+.order-cancel-btn,.order-support-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:16px;border:0;font-weight:900;box-shadow:0 14px 30px rgba(41,31,16,.1);transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+.order-cancel-btn{background:linear-gradient(135deg,#b24040,#e47a7a);color:#fff5f5}
+.order-support-btn{background:linear-gradient(135deg,#111111,#2d2115 58%,#deb77a 130%);color:#fff7ea}
+.order-cancel-btn:hover,.order-support-btn:hover{transform:translateY(-2px);filter:brightness(1.03)}
+.order-cancel-btn:disabled{opacity:.7;cursor:not-allowed;transform:none}
+.order-cancel-note{font-size:.9rem;line-height:1.8}
 .order-showcase-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .order-showcase-top strong{display:block;font-size:1.02rem;color:#17120d}
 .order-showcase-top p{margin:6px 0 0;color:#7b6954}
@@ -545,6 +550,8 @@ body[data-theme='light'] .avatar-crop-head h2{color:#18130f}
 body[data-theme='light'] .avatar-crop-frame{background:radial-gradient(circle at top,rgba(222,183,122,.18),rgba(245,236,222,.98) 60%);border-color:rgba(184,137,78,.18)}
 body[data-theme='light'] .avatar-crop-frame::after{border-color:#fffdf8;box-shadow:0 0 0 999px rgba(24,19,15,.12)}
 body[data-theme='light'] .order-wallet-note{background:#f7eddc;color:#8a622e}
+body[data-theme='light'] .order-cancel-btn{background:linear-gradient(135deg,#b94444,#e88a8a);color:#fff9f9}
+body[data-theme='light'] .order-support-btn{background:linear-gradient(135deg,#18130f,#5f4324 70%,#d8b27a 125%);color:#fffaf2}
 body[data-theme='light'] .account-stat-card strong,
 body[data-theme='light'] .account-info-card strong,
 body[data-theme='light'] .quick-link-item strong,
@@ -598,6 +605,8 @@ body[data-theme='light'] .settings-address-empty{background:#fff8ec;border-color
   .account-stat-card strong{font-size:1.2rem}
   .order-showcase-top{display:grid;gap:10px}
   .order-actions-row{display:grid;gap:10px}
+  .order-cancel-btn,
+  .order-support-btn{width:100%}
   .order-status-pill{width:max-content}
   .account-empty-actions{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
 }
