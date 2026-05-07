@@ -764,6 +764,8 @@ body[data-theme='light'] .admin-form textarea{background:#f7f0e4;color:#18130f;b
 .admin-section-head h2,.admin-section-head h3{margin:0;color:#fff}
 .admin-section-head p{margin:6px 0 0;color:var(--muted)}
 .admin-search-box{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border-radius:18px;border:1px solid rgba(222,183,122,.14);background:#171717;color:var(--gold)}
+.admin-search-camera{width:34px;height:34px;border:0;border-radius:12px;background:transparent;color:inherit;display:grid;place-items:center;flex:0 0 auto}
+.admin-search-camera:hover{background:rgba(222,183,122,.08);color:#fff}
 .admin-search-box input{width:100%;background:transparent;border:0;outline:0;color:#fff;font-size:.96rem}
 .admin-search-box input::placeholder{color:var(--muted)}
 .admin-dashboard-form{display:grid;gap:18px}

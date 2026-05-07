@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Camera,
   CreditCard,
   FolderTree,
   Gift,
@@ -15,8 +16,10 @@ import {
   Users,
   Wallet,
   Award,
-  QrCode
+  QrCode,
+  X
 } from 'lucide-react';
+import { BrowserQRCodeReader } from '@zxing/browser';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -53,6 +56,7 @@ const emptyDiscountForm = {
 const dashboardSections = [
   { id: 'products', label: 'المنتجات', icon: Package },
   { id: 'customer-care', label: 'إرضاء العميل', icon: Gift },
+  { id: 'store-purchases', label: 'تسجيل الشراء من المحل', icon: Store },
   { id: 'categories', label: 'الفئات والأقسام', icon: FolderTree },
   { id: 'store', label: 'إعدادات المتجر', icon: Store },
   { id: 'checkout', label: 'إعداد الطلب', icon: MapPin },
@@ -82,9 +86,14 @@ function Field({ label, children }) {
   );
 }
 
-function SearchBox({ value, onChange, placeholder }) {
+function SearchBox({ value, onChange, placeholder, onCameraClick }) {
   return (
     <label className="admin-search-box">
+      {onCameraClick ? (
+        <button type="button" className="admin-search-camera" onClick={onCameraClick} aria-label="قراءة QR بالكاميرا">
+          <Camera size={18} />
+        </button>
+      ) : null}
       <Search size={18} />
       <input value={value} onChange={onChange} placeholder={placeholder} />
     </label>
@@ -135,6 +144,12 @@ export default function AdminDashboard() {
   const [pointsForm, setPointsForm] = useState(emptyPointsForm);
   const [storePurchaseForm, setStorePurchaseForm] = useState(emptyStorePurchaseForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrScannerStarting, setQrScannerStarting] = useState(false);
+  const [qrScannerStatus, setQrScannerStatus] = useState('');
+  const qrVideoRef = React.useRef(null);
+  const qrReaderRef = React.useRef(null);
+  const qrControlsRef = React.useRef(null);
 
   const canManageCustomers = user?.role === 'admin' || user?.permissions?.includes('manage_customers');
   const sourceCategories = useMemo(() => getSourceCategories(categoryGroups), [categoryGroups]);
@@ -214,8 +229,13 @@ export default function AdminDashboard() {
     loadDashboard().catch(() => toast.error('تعذر تحميل لوحة التحكم'));
   }, []);
 
+  useEffect(() => () => {
+    qrControlsRef.current?.stop?.();
+    qrReaderRef.current?.reset?.();
+  }, []);
+
   useEffect(() => {
-    if (activeSection !== 'customer-care' || !canManageCustomers) return undefined;
+    if (!['customer-care', 'store-purchases'].includes(activeSection) || !canManageCustomers) return undefined;
     const timer = window.setTimeout(() => {
       loadCustomerCareUsers(customerSearch);
     }, 250);
@@ -321,6 +341,82 @@ export default function AdminDashboard() {
       toast.success(data.message || 'تم تنفيذ العملية');
     } catch (error) {
       toast.error(error.response?.data?.message || 'تعذر تنفيذ العملية');
+    }
+  };
+
+  const closeQrScanner = () => {
+    qrControlsRef.current?.stop?.();
+    qrControlsRef.current = null;
+    qrReaderRef.current?.reset?.();
+    setQrScannerOpen(false);
+    setQrScannerStarting(false);
+    setQrScannerStatus('');
+  };
+
+  const openQrScanner = () => {
+    setQrScannerOpen(true);
+    setQrScannerStarting(false);
+    setQrScannerStatus('للبدء اضغط على زر السماح بالكاميرا.');
+  };
+
+  const requestQrScanner = async () => {
+    setQrScannerStarting(true);
+    setQrScannerStatus('جارٍ تشغيل الكاميرا وقراءة QR...');
+
+    if (!window.isSecureContext) {
+      setQrScannerStatus('فتح الكاميرا يتطلب رابط https مباشر للموقع.');
+      setQrScannerStarting(false);
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setQrScannerStatus('هذا المتصفح لا يدعم فتح الكاميرا.');
+      setQrScannerStarting(false);
+      return;
+    }
+
+    try {
+      qrControlsRef.current?.stop?.();
+      qrReaderRef.current?.reset?.();
+
+      if (!qrReaderRef.current) {
+        qrReaderRef.current = new BrowserQRCodeReader();
+      }
+
+      const controls = await qrReaderRef.current.decodeFromConstraints(
+        {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        },
+        qrVideoRef.current,
+        (result, error) => {
+          const code = result?.getText?.();
+
+          if (code) {
+            setCustomerSearch(code);
+            closeQrScanner();
+            toast.success(`تم قراءة QR: ${code}`);
+            return;
+          }
+
+          if (!error || ['NotFoundException', 'ChecksumException', 'FormatException'].includes(error.name)) {
+            setQrScannerStatus('وجّه رمز QR داخل الإطار وثبّته لثانية واحدة...');
+            return;
+          }
+
+          setQrScannerStatus('تعذر قراءة QR حاليًا، حاول تقريب الكاميرا أو تحسين الإضاءة.');
+        }
+      );
+
+      qrControlsRef.current = controls;
+      setQrScannerStatus('وجّه رمز QR داخل الإطار وثبّته لثانية واحدة...');
+    } catch {
+      setQrScannerStatus('تعذر تشغيل الكاميرا. تأكد من السماح بالكاميرا وفتح الرابط المباشر للموقع.');
+      setQrScannerStarting(false);
     }
   };
 
@@ -450,15 +546,16 @@ export default function AdminDashboard() {
               <div className="admin-section-head">
                 <div>
                   <h2>قسم إرضاء العميل</h2>
-                  <p>ابحث عن العميل عبر QR أو رقم الهاتف أو الاسم أو البريد، ثم أضف له مزايا خاصة أو سجّل شراء المحل ونقاطه.</p>
+                  <p>ابحث عن العميل عبر QR أو رقم الهاتف أو الاسم أو البريد، ثم أضف له مزايا خاصة مثل المحفظة أو النقاط أو كود الخصم.</p>
                 </div>
               </div>
 
-              <SearchBox
-                value={customerSearch}
-                onChange={(event) => setCustomerSearch(event.target.value)}
-                placeholder="ابحث بالـ QR أو رقم الهاتف أو الاسم أو البريد الإلكتروني..."
-              />
+            <SearchBox
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.target.value)}
+              placeholder="ابحث بالـ QR أو رقم الهاتف أو الاسم أو البريد الإلكتروني..."
+              onCameraClick={openQrScanner}
+            />
 
               <div className="customer-care-layout">
                 <section className="customer-care-results">
@@ -596,22 +693,6 @@ export default function AdminDashboard() {
                           <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>حفظ كود الخصم</span></button>
                         </form>
 
-                        <form
-                          className="admin-setting-card customer-care-action-card"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            applyCustomerAction('store_purchase', storePurchaseForm);
-                          }}
-                        >
-                          <div className="customer-care-card-head">
-                            <Store size={18} />
-                            <strong>تسجيل شراء من المحل</strong>
-                          </div>
-                          <Field label="مبلغ الشراء"><input type="number" value={storePurchaseForm.amount} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, amount: event.target.value }))} placeholder="0" /></Field>
-                          <Field label="ملاحظة"><input value={storePurchaseForm.note} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: فاتورة من الفرع" /></Field>
-                          <p className="muted">سيتم إضافة نفس قيمة المبلغ كنقاط ولاء تقريبًا بعد التقريب لرقم صحيح.</p>
-                          <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>تسجيل الشراء</span></button>
-                        </form>
                       </div>
 
                       <article className="admin-setting-card">
@@ -649,10 +730,170 @@ export default function AdminDashboard() {
           )
         ) : null}
 
-        {!['products', 'customer-care'].includes(activeSection) ? (
+        {activeSection === 'store-purchases' ? (
+          canManageCustomers ? (
+            <section className="admin-dashboard-panel active">
+              <div className="admin-section-head">
+                <div>
+                  <h2>تسجيل الشراء من المحل</h2>
+                  <p>ابحث عن العميل عبر QR أو رقم الهاتف أو الاسم أو البريد، ثم سجّل مبلغ شراء المحل ليُضاف إلى إجمالي مشترياته ونقاطه مباشرة.</p>
+                </div>
+              </div>
+
+              <SearchBox
+                value={customerSearch}
+                onChange={(event) => setCustomerSearch(event.target.value)}
+                placeholder="ابحث بالـ QR أو رقم الهاتف أو الاسم أو البريد الإلكتروني..."
+                onCameraClick={openQrScanner}
+              />
+
+              <div className="customer-care-layout">
+                <section className="customer-care-results">
+                  {customerLoading ? <div className="admin-setting-card"><p className="muted">جارٍ تحميل العملاء...</p></div> : null}
+
+                  {!customerLoading && !customerResults.length ? (
+                    <div className="admin-setting-card">
+                      <p className="muted">لا توجد نتائج مطابقة حاليًا.</p>
+                    </div>
+                  ) : null}
+
+                  {customerResults.map((customer) => (
+                    <button
+                      key={customer._id}
+                      type="button"
+                      className={`customer-care-user-card${selectedCustomerId === customer._id ? ' active' : ''}`}
+                      onClick={() => setSelectedCustomerId(customer._id)}
+                    >
+                      <div className="customer-care-user-head">
+                        <div className="customer-care-user-avatar">
+                          {customer.avatar ? <img src={customer.avatar} alt={customer.name} /> : customer.name?.trim()?.slice(0, 2)?.toUpperCase()}
+                        </div>
+                        <div>
+                          <strong>{customer.name}</strong>
+                          <span>{customer.customerCode || 'بدون كود'}</span>
+                        </div>
+                      </div>
+                      <p>{customer.email || 'بدون بريد إلكتروني'}</p>
+                      <small>{customer.phone || 'بدون رقم هاتف'}</small>
+                    </button>
+                  ))}
+                </section>
+
+                <section className="customer-care-workspace">
+                  {selectedCustomer ? (
+                    <>
+                      <div className="customer-care-summary">
+                        <article className="customer-care-summary-card">
+                          <div className="customer-care-summary-head">
+                            <div className="customer-care-user-avatar large">
+                              {selectedCustomer.avatar ? <img src={selectedCustomer.avatar} alt={selectedCustomer.name} /> : selectedCustomer.name?.trim()?.slice(0, 2)?.toUpperCase()}
+                            </div>
+                            <div>
+                              <strong>{selectedCustomer.name}</strong>
+                              <span>{selectedCustomer.email || 'بدون بريد'}</span>
+                              <small>{selectedCustomer.phone || 'بدون هاتف'}</small>
+                            </div>
+                          </div>
+
+                          <div className="customer-care-meta-grid">
+                            <div><QrCode size={16} /><span>{selectedCustomer.customerCode || 'بدون QR'}</span></div>
+                            <div><Wallet size={16} /><span>{Number(selectedCustomer.walletBalance || 0)} ج.م</span></div>
+                            <div><Award size={16} /><span>{Number(selectedCustomer.loyaltyPoints || 0)} نقطة</span></div>
+                            <div><Store size={16} /><span>{Number(selectedCustomer.inStoreSpentTotal || 0)} ج.م مشتريات محل</span></div>
+                          </div>
+                        </article>
+
+                        <article className="admin-setting-card customer-care-action-card">
+                          <div className="customer-care-card-head">
+                            <Store size={18} />
+                            <strong>تسجيل شراء جديد من المحل</strong>
+                          </div>
+                          <Field label="مبلغ الشراء"><input type="number" value={storePurchaseForm.amount} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, amount: event.target.value }))} placeholder="0" /></Field>
+                          <Field label="ملاحظة"><input value={storePurchaseForm.note} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: فاتورة من الفرع" /></Field>
+                          <p className="muted">سيتم إضافة نفس قيمة المبلغ كنقاط ولاء تقريبًا بعد التقريب لرقم صحيح.</p>
+                          <button
+                            type="button"
+                            className="primary-btn admin-inline-save-btn"
+                            onClick={() => applyCustomerAction('store_purchase', storePurchaseForm)}
+                          >
+                            <Save size={16} />
+                            <span>تسجيل الشراء</span>
+                          </button>
+                        </article>
+                      </div>
+
+                      <article className="admin-setting-card">
+                        <div className="section-head compact customer-care-inline-head">
+                          <div>
+                            <h3>آخر عمليات الشراء المسجلة من المحل</h3>
+                            <span>سجل مختصر لعمليات هذا العميل داخل الفرع</span>
+                          </div>
+                        </div>
+                        <div className="customer-care-history">
+                          {selectedCustomer.customerCareHistory?.filter((entry) => entry.type === 'store_purchase').length ? selectedCustomer.customerCareHistory
+                            .filter((entry) => entry.type === 'store_purchase')
+                            .map((entry) => (
+                              <div key={entry._id} className="customer-care-history-item">
+                                <strong>{customerCareTypeLabel(entry.type)}</strong>
+                                <span>{entry.amount ? `${entry.amount} ج.م` : '-'}</span>
+                                <p>{entry.note || 'بدون ملاحظة'}</p>
+                              </div>
+                            )) : <p className="muted">لا توجد عمليات شراء محل مسجلة لهذا العميل حتى الآن.</p>}
+                        </div>
+                      </article>
+                    </>
+                  ) : (
+                    <div className="admin-setting-card">
+                      <p className="muted">اختر عميلًا من القائمة لتسجيل شراء جديد من المحل.</p>
+                    </div>
+                  )}
+                </section>
+              </div>
+            </section>
+          ) : (
+            <section className="admin-dashboard-panel active">
+              <div className="admin-setting-card">
+                <p className="muted">ليس لديك صلاحية الوصول إلى قسم تسجيل الشراء من المحل.</p>
+              </div>
+            </section>
+          )
+        ) : null}
+
+        {!['products', 'customer-care', 'store-purchases'].includes(activeSection) ? (
           <PlaceholderPanel title={dashboardSections.find((section) => section.id === activeSection)?.label || 'القسم'} />
         ) : null}
       </div>
+
+      {qrScannerOpen ? (
+        <div className="barcode-scanner-overlay" onClick={closeQrScanner}>
+          <div className="barcode-scanner-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="barcode-scanner-head">
+              <div>
+                <strong>قراءة QR بالكاميرا</strong>
+                <span>{qrScannerStatus || 'جارٍ تجهيز الكاميرا...'}</span>
+              </div>
+              <button type="button" className="barcode-scanner-close" onClick={closeQrScanner} aria-label="إغلاق">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="barcode-scanner-frame">
+              <video ref={qrVideoRef} className="barcode-scanner-video" playsInline muted autoPlay />
+              <div className="barcode-scanner-target" />
+            </div>
+
+            {!qrScannerStarting ? (
+              <button type="button" className="primary-btn barcode-scanner-allow" onClick={requestQrScanner}>
+                السماح بالكاميرا
+              </button>
+            ) : null}
+
+            <button type="button" className="secondary-btn barcode-scanner-cancel" onClick={closeQrScanner}>
+              إلغاء
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
