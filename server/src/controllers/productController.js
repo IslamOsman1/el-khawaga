@@ -11,10 +11,7 @@ export const getProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const keyword = req.query.keyword
     ? {
-      $or: [
-        { name: { $regex: escapeRegex(req.query.keyword), $options: 'i' } },
-        { barcode: { $regex: escapeRegex(req.query.keyword), $options: 'i' } }
-      ]
+      name: { $regex: escapeRegex(req.query.keyword), $options: 'i' }
     }
     : {};
   const category = req.query.category ? { category: req.query.category } : {};

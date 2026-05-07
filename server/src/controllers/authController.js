@@ -2,16 +2,25 @@ import crypto from 'crypto';
 import asyncHandler from 'express-async-handler';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
+import { buildCustomerQrValue, ensureCustomerCode } from '../utils/customerIdentity.js';
 import { generateToken } from '../utils/generateToken.js';
 import { sendEmail } from '../utils/email.js';
 
 const googleClient = new OAuth2Client();
+
+const isDiscountCodeActive = (code) => {
+  if (!code || code.active === false) return false;
+  if (!code.expiresAt) return true;
+  return new Date(code.expiresAt).getTime() >= Date.now();
+};
 
 const serializeUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
   phone: user.phone,
+  customerCode: user.customerCode || '',
+  qrCodeValue: buildCustomerQrValue(user),
   addresses: Array.isArray(user.addresses)
     ? user.addresses.map((item) => ({
       _id: item._id,
@@ -29,13 +38,33 @@ const serializeUser = (user) => ({
   walletBalance: Number(user.walletBalance || 0),
   loyaltyPoints: Number(user.loyaltyPoints || 0),
   loyaltyHistory: Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [],
+  inStoreSpentTotal: Number(user.inStoreSpentTotal || 0),
+  privateDiscountCodes: Array.isArray(user.privateDiscountCodes)
+    ? user.privateDiscountCodes
+      .filter(isDiscountCodeActive)
+      .map((item) => ({
+        _id: item._id,
+        code: item.code || '',
+        type: item.type || 'fixed',
+        value: Number(item.value || 0),
+        minOrderAmount: Number(item.minOrderAmount || 0),
+        maxDiscount: Number(item.maxDiscount || 0),
+        usageLimit: Number(item.usageLimit || 0),
+        usedCount: Number(item.usedCount || 0),
+        expiresAt: item.expiresAt || null,
+        note: item.note || ''
+      }))
+    : [],
   hasManualPassword: Boolean(user.hasManualPassword)
 });
 
-const buildAuthResponse = (user) => ({
-  token: generateToken(user._id),
-  user: serializeUser(user)
-});
+const buildAuthResponse = async (user) => {
+  await ensureCustomerCode(user);
+  return {
+    token: generateToken(user._id),
+    user: serializeUser(user)
+  };
+};
 
 const randomPassword = () => crypto.randomBytes(24).toString('hex');
 
@@ -66,7 +95,7 @@ export const register = asyncHandler(async (req, res) => {
       existingUser.phone = phone;
       existingUser.hasManualPassword = true;
       await existingUser.save();
-      return res.status(200).json(buildAuthResponse(existingUser));
+      return res.status(200).json(await buildAuthResponse(existingUser));
     }
 
     return res.status(400).json({ message: 'البريد مستخدم من قبل' });
@@ -80,7 +109,7 @@ export const register = asyncHandler(async (req, res) => {
     hasManualPassword: true
   });
 
-  res.status(201).json(buildAuthResponse(user));
+  res.status(201).json(await buildAuthResponse(user));
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -89,7 +118,7 @@ export const login = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: normalizedEmail });
 
   if (user && await user.matchPassword(password)) {
-    return res.json(buildAuthResponse(user));
+    return res.json(await buildAuthResponse(user));
   }
 
   if (user?.googleId && !user.hasManualPassword) {
@@ -148,7 +177,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  res.json(buildAuthResponse(user));
+  res.json(await buildAuthResponse(user));
 });
 
 export const setManualPassword = asyncHandler(async (req, res) => {
@@ -162,7 +191,7 @@ export const setManualPassword = asyncHandler(async (req, res) => {
   req.user.hasManualPassword = true;
   await req.user.save();
 
-  res.json(buildAuthResponse(req.user));
+  res.json(await buildAuthResponse(req.user));
 });
 
 export const sendResetPasswordCode = asyncHandler(async (req, res) => {
@@ -288,4 +317,7 @@ export const resetPasswordWithEmailCode = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'تم تحديث كلمة المرور بنجاح' });
 });
 
-export const profile = asyncHandler(async (req, res) => res.json(serializeUser(req.user)));
+export const profile = asyncHandler(async (req, res) => {
+  await ensureCustomerCode(req.user);
+  res.json(serializeUser(req.user));
+});

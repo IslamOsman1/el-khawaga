@@ -2,6 +2,23 @@ import { calculateShippingPrice } from './shipping.js';
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 const normalizeCode = (value = '') => String(value || '').trim().toUpperCase();
+const isCodeExpired = (code) => code?.expiresAt && new Date(code.expiresAt).getTime() < Date.now();
+
+const findMatchedDiscountCode = (settings, user, normalizedCode) => {
+  if (!normalizedCode) return null;
+
+  const privateCode = (user?.privateDiscountCodes || []).find((item) => normalizeCode(item.code) === normalizedCode);
+  if (privateCode) {
+    return { source: 'private', code: privateCode };
+  }
+
+  const storeCode = (settings?.loyalty?.discountCodes || []).find((item) => normalizeCode(item.code) === normalizedCode);
+  if (storeCode) {
+    return { source: 'store', code: storeCode };
+  }
+
+  return null;
+};
 
 export const calculateEarnedLoyaltyPoints = (settings, itemsPrice) => {
   const loyalty = settings?.loyalty || {};
@@ -26,10 +43,12 @@ export const calculateOrderPricing = async ({
   const loyaltySettings = settings?.loyalty || {};
   const normalizedCode = normalizeCode(discountCode);
   let appliedDiscountCode = '';
+  let discountCodeSource = '';
   let discountCodeAmount = 0;
 
   if (normalizedCode) {
-    const matchedCode = (loyaltySettings.discountCodes || []).find((item) => normalizeCode(item.code) === normalizedCode);
+    const matchedDiscount = findMatchedDiscountCode(settings, user, normalizedCode);
+    const matchedCode = matchedDiscount?.code;
 
     if (!matchedCode || matchedCode.active === false) {
       const error = new Error('كود الخصم غير صالح');
@@ -37,7 +56,7 @@ export const calculateOrderPricing = async ({
       throw error;
     }
 
-    if (matchedCode.expiresAt && new Date(matchedCode.expiresAt).getTime() < Date.now()) {
+    if (isCodeExpired(matchedCode)) {
       const error = new Error('انتهت صلاحية كود الخصم');
       error.statusCode = 400;
       throw error;
@@ -65,6 +84,7 @@ export const calculateOrderPricing = async ({
 
     discountCodeAmount = roundMoney(Math.min(discountCodeAmount, subtotal));
     appliedDiscountCode = matchedCode.code;
+    discountCodeSource = matchedDiscount?.source || 'store';
   }
 
   let loyaltyPointsUsed = 0;
@@ -98,6 +118,7 @@ export const calculateOrderPricing = async ({
     itemsPrice,
     shippingPrice,
     discountCode: appliedDiscountCode,
+    discountCodeSource,
     discountCodeAmount,
     loyaltyPointsUsed,
     loyaltyPointsDiscount,
@@ -105,9 +126,19 @@ export const calculateOrderPricing = async ({
   };
 };
 
-export const incrementDiscountCodeUsage = async (settings, code) => {
+export const incrementDiscountCodeUsage = async ({ settings, user, code, source = 'store' }) => {
   const normalizedCode = normalizeCode(code);
-  if (!normalizedCode || !settings?.loyalty?.discountCodes?.length) return;
+  if (!normalizedCode) return;
+
+  if (source === 'private' && user?.privateDiscountCodes?.length) {
+    const target = user.privateDiscountCodes.find((item) => normalizeCode(item.code) === normalizedCode);
+    if (!target) return;
+    target.usedCount = Number(target.usedCount || 0) + 1;
+    await user.save();
+    return;
+  }
+
+  if (!settings?.loyalty?.discountCodes?.length) return;
 
   const target = settings.loyalty.discountCodes.find((item) => normalizeCode(item.code) === normalizedCode);
   if (!target) return;

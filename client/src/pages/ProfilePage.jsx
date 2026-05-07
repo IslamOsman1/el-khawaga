@@ -1,13 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, ClipboardList, Heart, Mail, Phone, ShieldCheck, ShoppingCart, UserRound, Wallet } from 'lucide-react';
+import QRCode from 'qrcode';
+import {
+  Award,
+  ClipboardList,
+  Heart,
+  Mail,
+  Phone,
+  QrCode,
+  ShieldCheck,
+  ShoppingCart,
+  TicketPercent,
+  UserRound,
+  Wallet
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const [qrImage, setQrImage] = useState('');
 
   const displayName = user?.name || 'مستخدم الوكالة';
   const initials = displayName.trim().slice(0, 2).toUpperCase();
+  const activePrivateCodes = Array.isArray(user?.privateDiscountCodes) ? user.privateDiscountCodes : [];
+
+  useEffect(() => {
+    const qrValue = user?.qrCodeValue || user?.customerCode || '';
+    if (!qrValue) {
+      setQrImage('');
+      return;
+    }
+
+    QRCode.toDataURL(qrValue, {
+      margin: 1,
+      width: 220,
+      color: {
+        dark: '#111111',
+        light: '#fffaf2'
+      }
+    })
+      .then(setQrImage)
+      .catch(() => setQrImage(''));
+  }, [user?.customerCode, user?.qrCodeValue]);
 
   return (
     <main className="app-shell home-screen market-home account-page-shell">
@@ -19,7 +53,7 @@ export default function ProfilePage() {
           <div className="account-copy">
             <span className="market-pill">الملف الشخصي</span>
             <h1>{displayName}</h1>
-            <p>لوحة شخصية مختصرة للوصول السريع إلى بياناتك وطلباتك ومفضلاتك ومحفظتك ونقاطك.</p>
+            <p>لوحة شخصية مختصرة للوصول السريع إلى بياناتك وطلباتك ومفضلاتك ومحفظتك ونقاطك وكود العميل الخاص بك.</p>
           </div>
         </div>
         <div className="account-hero-actions">
@@ -76,6 +110,51 @@ export default function ProfilePage() {
               <div>
                 <strong>نقاط الولاء</strong>
                 <p>{Number(user?.loyaltyPoints || 0)} نقطة</p>
+              </div>
+            </article>
+          </div>
+
+          <div className="profile-identity-grid">
+            <article className="profile-qr-card">
+              <div className="profile-qr-head">
+                <div>
+                  <strong>QR العميل</strong>
+                  <span>أظهر هذا الرمز عند الكاشير أو للدعم للوصول السريع إلى حسابك.</span>
+                </div>
+                <span className="account-info-icon"><QrCode size={18} /></span>
+              </div>
+
+              <div className="profile-qr-box">
+                {qrImage ? <img src={qrImage} alt={`QR ${user?.customerCode || ''}`} /> : <div className="profile-qr-empty">QR</div>}
+              </div>
+
+              <div className="profile-customer-code">
+                <small>كود العميل</small>
+                <strong>{user?.customerCode || 'غير متوفر'}</strong>
+              </div>
+            </article>
+
+            <article className="profile-discount-card">
+              <div className="profile-qr-head">
+                <div>
+                  <strong>أكوادك الخاصة</strong>
+                  <span>أكواد خصم مرتبطة بحسابك ويمكن استخدامها أثناء الشراء.</span>
+                </div>
+                <span className="account-info-icon"><TicketPercent size={18} /></span>
+              </div>
+
+              <div className="profile-private-codes">
+                {activePrivateCodes.length ? activePrivateCodes.map((item) => (
+                  <article key={item._id || item.code} className="profile-private-code-item">
+                    <strong>{item.code}</strong>
+                    <p>
+                      {item.type === 'percent' ? `${Number(item.value || 0)}% خصم` : `${Number(item.value || 0)} ج.م خصم`}
+                      {Number(item.minOrderAmount || 0) > 0 ? ` • حد أدنى ${Number(item.minOrderAmount || 0)} ج.م` : ''}
+                    </p>
+                  </article>
+                )) : (
+                  <div className="profile-private-code-empty">لا توجد أكواد خصم خاصة مفعلة حاليًا.</div>
+                )}
               </div>
             </article>
           </div>

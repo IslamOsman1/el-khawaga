@@ -12,7 +12,10 @@ import {
   ShieldCheck,
   ShoppingBag,
   Store,
-  Users
+  Users,
+  Wallet,
+  Award,
+  QrCode
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
@@ -26,7 +29,6 @@ const emptyProduct = {
   oldPrice: '',
   category: '',
   subcategory: '',
-  barcode: '',
   unit: 'قطعة',
   countInStock: '',
   featured: false,
@@ -34,8 +36,23 @@ const emptyProduct = {
   isDeal: false
 };
 
+const emptyWalletForm = { amount: '', note: '' };
+const emptyPointsForm = { amount: '', note: '' };
+const emptyStorePurchaseForm = { amount: '', note: '' };
+const emptyDiscountForm = {
+  code: '',
+  type: 'fixed',
+  value: '',
+  minOrderAmount: '',
+  maxDiscount: '',
+  usageLimit: '1',
+  expiresAt: '',
+  note: ''
+};
+
 const dashboardSections = [
   { id: 'products', label: 'المنتجات', icon: Package },
+  { id: 'customer-care', label: 'إرضاء العميل', icon: Gift },
   { id: 'categories', label: 'الفئات والأقسام', icon: FolderTree },
   { id: 'store', label: 'إعدادات المتجر', icon: Store },
   { id: 'checkout', label: 'إعداد الطلب', icon: MapPin },
@@ -49,6 +66,12 @@ const dashboardSections = [
 ];
 
 const normalizeText = (value) => String(value || '').toLowerCase();
+const customerCareTypeLabel = (value) => ({
+  wallet_credit: 'إضافة للمحفظة',
+  points_credit: 'إضافة نقاط',
+  discount_code: 'كود خصم خاص',
+  store_purchase: 'شراء من المحل'
+}[value] || value);
 
 function Field({ label, children }) {
   return (
@@ -83,11 +106,11 @@ function PlaceholderPanel({ title }) {
       <div className="admin-section-head">
         <div>
           <h2>{title}</h2>
-          <p>تمت إعادة تهيئة هذا القسم مؤقتًا بعد إصلاح مشكلة الترميز، ويمكننا إرجاع وظائفه التفصيلية في الخطوة التالية.</p>
+          <p>هذا القسم ظاهر الآن بشكل سليم، ويمكننا توسيعه لاحقًا بدون التأثير على الواجهة.</p>
         </div>
       </div>
       <div className="admin-setting-card">
-        <p className="muted">هذا القسم ظاهر الآن بشكل سليم بدل النصوص التالفة، وجاهز لإعادة توسيعه بدون كسر الواجهة.</p>
+        <p className="muted">القسم ما زال في نسخة مبسطة وآمنة بعد إصلاحات سابقة على اللوحة.</p>
       </div>
     </section>
   );
@@ -104,7 +127,16 @@ export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryGroups, setCategoryGroups] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [walletForm, setWalletForm] = useState(emptyWalletForm);
+  const [pointsForm, setPointsForm] = useState(emptyPointsForm);
+  const [storePurchaseForm, setStorePurchaseForm] = useState(emptyStorePurchaseForm);
+  const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
 
+  const canManageCustomers = user?.role === 'admin' || user?.permissions?.includes('manage_customers');
   const sourceCategories = useMemo(() => getSourceCategories(categoryGroups), [categoryGroups]);
   const availableSections = useMemo(() => {
     if (!productForm.category) return [];
@@ -130,12 +162,16 @@ export default function AdminDashboard() {
         product.description,
         product.category,
         product.subcategory,
-        product.barcode,
         product.unit
       ].some((value) => normalizeText(value).includes(term)));
   }, [products, searchTerm]);
 
-  const load = async () => {
+  const selectedCustomer = useMemo(
+    () => customerResults.find((entry) => entry._id === selectedCustomerId) || null,
+    [customerResults, selectedCustomerId]
+  );
+
+  const loadDashboard = async () => {
     const productRequest = api.get('/products?limit=100');
     const orderRequest = api.get('/orders').catch(() => ({ data: [] }));
     const userRequest = api.get('/users').catch(() => ({ data: [] }));
@@ -154,9 +190,37 @@ export default function AdminDashboard() {
     setCategoryGroups(getCategoryGroups(categoryResponse.data || {}));
   };
 
+  const loadCustomerCareUsers = async (query = '') => {
+    if (!canManageCustomers) return;
+    setCustomerLoading(true);
+
+    try {
+      const { data } = await api.get('/users/customer-care', {
+        params: { q: query }
+      });
+      setCustomerResults(Array.isArray(data) ? data : []);
+      setSelectedCustomerId((current) => {
+        if (current && data.some((item) => item._id === current)) return current;
+        return data[0]?._id || '';
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'تعذر تحميل عملاء قسم إرضاء العميل');
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
   useEffect(() => {
-    load().catch(() => toast.error('تعذر تحميل لوحة التحكم'));
+    loadDashboard().catch(() => toast.error('تعذر تحميل لوحة التحكم'));
   }, []);
+
+  useEffect(() => {
+    if (activeSection !== 'customer-care' || !canManageCustomers) return undefined;
+    const timer = window.setTimeout(() => {
+      loadCustomerCareUsers(customerSearch);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [activeSection, customerSearch, canManageCustomers]);
 
   const changeProduct = (event) => {
     const { name, value, type, checked } = event.target;
@@ -169,10 +233,7 @@ export default function AdminDashboard() {
 
   const submitProduct = async (event) => {
     event.preventDefault();
-    const payload = {
-      ...productForm,
-      barcode: String(productForm.barcode || '').trim()
-    };
+    const payload = { ...productForm };
 
     let requestBody = payload;
     let config;
@@ -196,7 +257,7 @@ export default function AdminDashboard() {
       setProductForm(emptyProduct);
       setImage(null);
       setEditing(null);
-      await load();
+      await loadDashboard();
     } catch (error) {
       toast.error(error.response?.data?.message || 'حدث خطأ أثناء حفظ المنتج');
     }
@@ -212,7 +273,6 @@ export default function AdminDashboard() {
       oldPrice: product.oldPrice,
       category: product.category,
       subcategory: product.subcategory || '',
-      barcode: product.barcode || '',
       unit: product.unit || 'قطعة',
       countInStock: product.countInStock,
       featured: Boolean(product.featured),
@@ -228,13 +288,45 @@ export default function AdminDashboard() {
     try {
       await api.delete(`/products/${id}`, { data: { deletePassword: '' } });
       toast.success('تم حذف المنتج');
-      await load();
+      await loadDashboard();
     } catch (error) {
       toast.error(error.response?.data?.message || 'تعذر حذف المنتج');
     }
   };
 
+  const applyCustomerAction = async (actionType, payload) => {
+    if (!selectedCustomer) {
+      toast.error('اختر عميلًا أولًا');
+      return;
+    }
+
+    try {
+      const { data } = await api.post(`/users/${selectedCustomer._id}/customer-care`, {
+        actionType,
+        ...payload
+      });
+
+      const updatedCustomer = data.user;
+      setCustomerResults((current) => {
+        const next = current.some((item) => item._id === updatedCustomer._id)
+          ? current.map((item) => item._id === updatedCustomer._id ? updatedCustomer : item)
+          : [updatedCustomer, ...current];
+        return next;
+      });
+      setSelectedCustomerId(updatedCustomer._id);
+      setWalletForm(emptyWalletForm);
+      setPointsForm(emptyPointsForm);
+      setStorePurchaseForm(emptyStorePurchaseForm);
+      setDiscountForm(emptyDiscountForm);
+      toast.success(data.message || 'تم تنفيذ العملية');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'تعذر تنفيذ العملية');
+    }
+  };
+
   const sectionClass = (id) => `dashboard-tab-btn${activeSection === id ? ' active' : ''}`;
+
+  if (!user) return null;
 
   return (
     <main className="container page admin-dashboard-page">
@@ -242,7 +334,7 @@ export default function AdminDashboard() {
         <div className="admin-hero-copy">
           <span className="market-pill">لوحة التحكم</span>
           <h1>إدارة المتجر من مكان واحد</h1>
-          <p>تم إصلاح مشكلة الترميز في الجزء الرئيسي من اللوحة، ويمكنك الآن متابعة إدارة المنتجات والبحث بالباركود بشكل طبيعي.</p>
+          <p>لوحة تشغيل سريعة لإدارة المنتجات، ومتابعة العملاء، ومنح مزايا مخصصة مثل المحفظة والنقاط وأكواد الخصم الخاصة.</p>
         </div>
         <div className="admin-hero-stats">
           <StatCard label="إجمالي الطلبات" value={stats.totalOrders} />
@@ -278,7 +370,7 @@ export default function AdminDashboard() {
             <SearchBox
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="ابحث عن منتج بالاسم أو الباركود أو الفئة..."
+              placeholder="ابحث عن منتج بالاسم أو الفئة..."
             />
 
             <form onSubmit={submitProduct} className="admin-dashboard-form">
@@ -299,7 +391,6 @@ export default function AdminDashboard() {
                     {availableSections.map((section) => <option key={section.title} value={section.title}>{section.title}</option>)}
                   </select>
                 </Field>
-                <Field label="الباركود"><input name="barcode" value={productForm.barcode} onChange={changeProduct} placeholder="مثال: 6221234567890" inputMode="numeric" /></Field>
                 <Field label="الوحدة"><input name="unit" value={productForm.unit} onChange={changeProduct} placeholder="قطعة / كجم / عبوة" /></Field>
                 <Field label="المخزون"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
                 <Field label="صورة المنتج"><input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} /></Field>
@@ -325,7 +416,6 @@ export default function AdminDashboard() {
                       <th>المنتج</th>
                       <th>الفئة</th>
                       <th>القسم</th>
-                      <th>الباركود</th>
                       <th>السعر</th>
                       <th>المخزون</th>
                       <th>الإجراءات</th>
@@ -337,7 +427,6 @@ export default function AdminDashboard() {
                         <td>{product.name}</td>
                         <td>{product.category || '-'}</td>
                         <td>{product.subcategory || '-'}</td>
-                        <td>{product.barcode || '-'}</td>
                         <td>{product.price} ج.م</td>
                         <td>{product.countInStock}</td>
                         <td>
@@ -353,9 +442,216 @@ export default function AdminDashboard() {
               </div>
             </div>
           </section>
-        ) : (
+        ) : null}
+
+        {activeSection === 'customer-care' ? (
+          canManageCustomers ? (
+            <section className="admin-dashboard-panel active">
+              <div className="admin-section-head">
+                <div>
+                  <h2>قسم إرضاء العميل</h2>
+                  <p>ابحث عن العميل عبر QR أو رقم الهاتف أو الاسم أو البريد، ثم أضف له مزايا خاصة أو سجّل شراء المحل ونقاطه.</p>
+                </div>
+              </div>
+
+              <SearchBox
+                value={customerSearch}
+                onChange={(event) => setCustomerSearch(event.target.value)}
+                placeholder="ابحث بالـ QR أو رقم الهاتف أو الاسم أو البريد الإلكتروني..."
+              />
+
+              <div className="customer-care-layout">
+                <section className="customer-care-results">
+                  {customerLoading ? <div className="admin-setting-card"><p className="muted">جارٍ تحميل العملاء...</p></div> : null}
+
+                  {!customerLoading && !customerResults.length ? (
+                    <div className="admin-setting-card">
+                      <p className="muted">لا توجد نتائج مطابقة حاليًا.</p>
+                    </div>
+                  ) : null}
+
+                  {customerResults.map((customer) => (
+                    <button
+                      key={customer._id}
+                      type="button"
+                      className={`customer-care-user-card${selectedCustomerId === customer._id ? ' active' : ''}`}
+                      onClick={() => setSelectedCustomerId(customer._id)}
+                    >
+                      <div className="customer-care-user-head">
+                        <div className="customer-care-user-avatar">
+                          {customer.avatar ? <img src={customer.avatar} alt={customer.name} /> : customer.name?.trim()?.slice(0, 2)?.toUpperCase()}
+                        </div>
+                        <div>
+                          <strong>{customer.name}</strong>
+                          <span>{customer.customerCode || 'بدون كود'}</span>
+                        </div>
+                      </div>
+                      <p>{customer.email || 'بدون بريد إلكتروني'}</p>
+                      <small>{customer.phone || 'بدون رقم هاتف'}</small>
+                    </button>
+                  ))}
+                </section>
+
+                <section className="customer-care-workspace">
+                  {selectedCustomer ? (
+                    <>
+                      <div className="customer-care-summary">
+                        <article className="customer-care-summary-card">
+                          <div className="customer-care-summary-head">
+                            <div className="customer-care-user-avatar large">
+                              {selectedCustomer.avatar ? <img src={selectedCustomer.avatar} alt={selectedCustomer.name} /> : selectedCustomer.name?.trim()?.slice(0, 2)?.toUpperCase()}
+                            </div>
+                            <div>
+                              <strong>{selectedCustomer.name}</strong>
+                              <span>{selectedCustomer.email || 'بدون بريد'}</span>
+                              <small>{selectedCustomer.phone || 'بدون هاتف'}</small>
+                            </div>
+                          </div>
+
+                          <div className="customer-care-meta-grid">
+                            <div><QrCode size={16} /><span>{selectedCustomer.customerCode || 'بدون QR'}</span></div>
+                            <div><Wallet size={16} /><span>{Number(selectedCustomer.walletBalance || 0)} ج.م</span></div>
+                            <div><Award size={16} /><span>{Number(selectedCustomer.loyaltyPoints || 0)} نقطة</span></div>
+                            <div><Store size={16} /><span>{Number(selectedCustomer.inStoreSpentTotal || 0)} ج.م مشتريات محل</span></div>
+                          </div>
+                        </article>
+
+                        <article className="customer-care-summary-card">
+                          <div className="section-head compact customer-care-inline-head">
+                            <div>
+                              <h3>الأكواد الخاصة النشطة</h3>
+                              <span>مرتبطة بحساب العميل</span>
+                            </div>
+                          </div>
+                          <div className="customer-care-discounts">
+                            {selectedCustomer.privateDiscountCodes?.length ? selectedCustomer.privateDiscountCodes.map((code) => (
+                              <div key={code._id || code.code} className="customer-care-discount-chip">
+                                <strong>{code.code}</strong>
+                                <span>{code.type === 'percent' ? `${Number(code.value || 0)}% خصم` : `${Number(code.value || 0)} ج.م خصم`}</span>
+                              </div>
+                            )) : <p className="muted">لا توجد أكواد خصم خاصة مفعلة.</p>}
+                          </div>
+                        </article>
+                      </div>
+
+                      <div className="customer-care-actions-grid">
+                        <form
+                          className="admin-setting-card customer-care-action-card"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            applyCustomerAction('wallet_credit', walletForm);
+                          }}
+                        >
+                          <div className="customer-care-card-head">
+                            <Wallet size={18} />
+                            <strong>إضافة رصيد للمحفظة</strong>
+                          </div>
+                          <Field label="المبلغ"><input type="number" value={walletForm.amount} onChange={(event) => setWalletForm((current) => ({ ...current, amount: event.target.value }))} placeholder="0" /></Field>
+                          <Field label="ملاحظة"><input value={walletForm.note} onChange={(event) => setWalletForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: تعويض أو هدية" /></Field>
+                          <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>إضافة للمحفظة</span></button>
+                        </form>
+
+                        <form
+                          className="admin-setting-card customer-care-action-card"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            applyCustomerAction('points_credit', { amount: pointsForm.amount, note: pointsForm.note });
+                          }}
+                        >
+                          <div className="customer-care-card-head">
+                            <Award size={18} />
+                            <strong>إضافة نقاط ولاء</strong>
+                          </div>
+                          <Field label="عدد النقاط"><input type="number" value={pointsForm.amount} onChange={(event) => setPointsForm((current) => ({ ...current, amount: event.target.value }))} placeholder="0" /></Field>
+                          <Field label="ملاحظة"><input value={pointsForm.note} onChange={(event) => setPointsForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: رضا عميل أو ترقية" /></Field>
+                          <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>إضافة النقاط</span></button>
+                        </form>
+
+                        <form
+                          className="admin-setting-card customer-care-action-card wide"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            applyCustomerAction('discount_code', discountForm);
+                          }}
+                        >
+                          <div className="customer-care-card-head">
+                            <Gift size={18} />
+                            <strong>إنشاء كود خصم خاص</strong>
+                          </div>
+                          <div className="admin-dashboard-form-grid two-cols">
+                            <Field label="الكود الخاص"><input value={discountForm.code} onChange={(event) => setDiscountForm((current) => ({ ...current, code: event.target.value }))} placeholder="اتركه فارغًا للتوليد التلقائي" /></Field>
+                            <Field label="نوع الخصم">
+                              <select value={discountForm.type} onChange={(event) => setDiscountForm((current) => ({ ...current, type: event.target.value }))}>
+                                <option value="fixed">مبلغ ثابت</option>
+                                <option value="percent">نسبة مئوية</option>
+                              </select>
+                            </Field>
+                            <Field label="قيمة الخصم"><input type="number" value={discountForm.value} onChange={(event) => setDiscountForm((current) => ({ ...current, value: event.target.value }))} placeholder="0" /></Field>
+                            <Field label="الحد الأدنى للطلب"><input type="number" value={discountForm.minOrderAmount} onChange={(event) => setDiscountForm((current) => ({ ...current, minOrderAmount: event.target.value }))} placeholder="0" /></Field>
+                            <Field label="الحد الأقصى للخصم"><input type="number" value={discountForm.maxDiscount} onChange={(event) => setDiscountForm((current) => ({ ...current, maxDiscount: event.target.value }))} placeholder="0" /></Field>
+                            <Field label="عدد مرات الاستخدام"><input type="number" value={discountForm.usageLimit} onChange={(event) => setDiscountForm((current) => ({ ...current, usageLimit: event.target.value }))} placeholder="1" /></Field>
+                            <Field label="تاريخ الانتهاء"><input type="date" value={discountForm.expiresAt} onChange={(event) => setDiscountForm((current) => ({ ...current, expiresAt: event.target.value }))} /></Field>
+                            <Field label="ملاحظة"><input value={discountForm.note} onChange={(event) => setDiscountForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: عميل VIP" /></Field>
+                          </div>
+                          <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>حفظ كود الخصم</span></button>
+                        </form>
+
+                        <form
+                          className="admin-setting-card customer-care-action-card"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            applyCustomerAction('store_purchase', storePurchaseForm);
+                          }}
+                        >
+                          <div className="customer-care-card-head">
+                            <Store size={18} />
+                            <strong>تسجيل شراء من المحل</strong>
+                          </div>
+                          <Field label="مبلغ الشراء"><input type="number" value={storePurchaseForm.amount} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, amount: event.target.value }))} placeholder="0" /></Field>
+                          <Field label="ملاحظة"><input value={storePurchaseForm.note} onChange={(event) => setStorePurchaseForm((current) => ({ ...current, note: event.target.value }))} placeholder="مثال: فاتورة من الفرع" /></Field>
+                          <p className="muted">سيتم إضافة نفس قيمة المبلغ كنقاط ولاء تقريبًا بعد التقريب لرقم صحيح.</p>
+                          <button type="submit" className="primary-btn admin-inline-save-btn"><Save size={16} /><span>تسجيل الشراء</span></button>
+                        </form>
+                      </div>
+
+                      <article className="admin-setting-card">
+                        <div className="section-head compact customer-care-inline-head">
+                          <div>
+                            <h3>آخر عمليات إرضاء العميل</h3>
+                            <span>سجل مختصر لآخر الإجراءات</span>
+                          </div>
+                        </div>
+                        <div className="customer-care-history">
+                          {selectedCustomer.customerCareHistory?.length ? selectedCustomer.customerCareHistory.map((entry) => (
+                            <div key={entry._id} className="customer-care-history-item">
+                              <strong>{customerCareTypeLabel(entry.type)}</strong>
+                              <span>{entry.code || (entry.amount ? `${entry.amount} ج.م` : entry.points ? `${entry.points} نقطة` : '-')}</span>
+                              <p>{entry.note || 'بدون ملاحظة'}</p>
+                            </div>
+                          )) : <p className="muted">لا توجد عمليات مسجلة لهذا العميل حتى الآن.</p>}
+                        </div>
+                      </article>
+                    </>
+                  ) : (
+                    <div className="admin-setting-card">
+                      <p className="muted">اختر عميلًا من القائمة لعرض بياناته ومنحه مزايا خاصة.</p>
+                    </div>
+                  )}
+                </section>
+              </div>
+            </section>
+          ) : (
+            <section className="admin-dashboard-panel active">
+              <div className="admin-setting-card">
+                <p className="muted">ليس لديك صلاحية الوصول إلى قسم إرضاء العميل.</p>
+              </div>
+            </section>
+          )
+        ) : null}
+
+        {!['products', 'customer-care'].includes(activeSection) ? (
           <PlaceholderPanel title={dashboardSections.find((section) => section.id === activeSection)?.label || 'القسم'} />
-        )}
+        ) : null}
       </div>
     </main>
   );

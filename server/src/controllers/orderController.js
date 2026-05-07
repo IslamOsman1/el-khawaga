@@ -142,7 +142,13 @@ export const createOrder = asyncHandler(async (req, res) => {
   await consumeLoyaltyPoints(req.user._id, order, pricing.loyaltyPointsUsed);
 
   if (pricing.discountCode) {
-    await incrementDiscountCodeUsage(settings, pricing.discountCode);
+    const freshUser = pricing.discountCodeSource === 'private' ? await User.findById(req.user._id) : null;
+    await incrementDiscountCodeUsage({
+      settings,
+      user: freshUser,
+      code: pricing.discountCode,
+      source: pricing.discountCodeSource
+    });
   }
 
   res.status(201).json(order);

@@ -1,5 +1,7 @@
 import asyncHandler from 'express-async-handler';
+import crypto from 'crypto';
 import User from '../models/User.js';
+import { buildCustomerQrValue, ensureCustomerCode } from '../utils/customerIdentity.js';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const normalizePhone = (phone = '') => {
@@ -25,11 +27,37 @@ const normalizePhone = (phone = '') => {
   return '';
 };
 
+const normalizeCode = (value = '') => String(value || '').trim().toUpperCase();
+const buildRegex = (value = '') => new RegExp(String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+const isDiscountCodeActive = (code) => {
+  if (!code || code.active === false) return false;
+  if (!code.expiresAt) return true;
+  return new Date(code.expiresAt).getTime() >= Date.now();
+};
+
+const serializeDiscountCode = (code) => ({
+  _id: code._id,
+  code: code.code || '',
+  type: code.type || 'fixed',
+  value: Number(code.value || 0),
+  minOrderAmount: Number(code.minOrderAmount || 0),
+  maxDiscount: Number(code.maxDiscount || 0),
+  usageLimit: Number(code.usageLimit || 0),
+  usedCount: Number(code.usedCount || 0),
+  active: code.active !== false,
+  expiresAt: code.expiresAt || null,
+  note: code.note || '',
+  createdAt: code.createdAt || null
+});
+
 const serializeUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
   phone: user.phone,
+  customerCode: user.customerCode || '',
+  qrCodeValue: buildCustomerQrValue(user),
   addresses: Array.isArray(user.addresses)
     ? user.addresses.map((item) => ({
       _id: item._id,
@@ -47,21 +75,232 @@ const serializeUser = (user) => ({
   walletBalance: Number(user.walletBalance || 0),
   loyaltyPoints: Number(user.loyaltyPoints || 0),
   loyaltyHistory: Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [],
+  inStoreSpentTotal: Number(user.inStoreSpentTotal || 0),
+  privateDiscountCodes: Array.isArray(user.privateDiscountCodes)
+    ? user.privateDiscountCodes.filter(isDiscountCodeActive).map(serializeDiscountCode)
+    : [],
   hasManualPassword: Boolean(user.hasManualPassword)
 });
 
+const serializeCustomerCareUser = (user) => ({
+  _id: user._id,
+  name: user.name || '',
+  email: user.email || '',
+  phone: user.phone || '',
+  avatar: user.avatar || '',
+  role: user.role || 'user',
+  customerCode: user.customerCode || '',
+  qrCodeValue: buildCustomerQrValue(user),
+  walletBalance: Number(user.walletBalance || 0),
+  loyaltyPoints: Number(user.loyaltyPoints || 0),
+  inStoreSpentTotal: Number(user.inStoreSpentTotal || 0),
+  privateDiscountCodes: Array.isArray(user.privateDiscountCodes)
+    ? user.privateDiscountCodes.filter(isDiscountCodeActive).map(serializeDiscountCode)
+    : [],
+  customerCareHistory: Array.isArray(user.customerCareHistory)
+    ? user.customerCareHistory.slice(0, 12)
+    : []
+});
+
+const buildPrivateDiscountCode = (customerCode = '') => {
+  const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+  const readableCustomer = String(customerCode || 'WK').slice(-4).toUpperCase();
+  return `VIP-${readableCustomer}-${suffix}`;
+};
+
+const ensureUsersHaveCodes = async (users = []) => {
+  await Promise.all(users.map((user) => ensureCustomerCode(user)));
+  return users;
+};
+
 export const allUsers = asyncHandler(async (_req, res) => {
   const users = await User.find({})
-    .select('name email phone role permissions avatar walletBalance loyaltyPoints hasManualPassword createdAt googleId addresses')
+    .select('name email phone role permissions avatar walletBalance loyaltyPoints hasManualPassword createdAt googleId addresses customerCode privateDiscountCodes inStoreSpentTotal')
     .sort({ createdAt: -1 });
 
+  await ensureUsersHaveCodes(users);
   res.json(users);
+});
+
+export const searchCustomerCareUsers = asyncHandler(async (req, res) => {
+  const rawQuery = String(req.query.q || '').trim();
+  const query = rawQuery.includes(':') ? rawQuery.split(':').pop().trim() : rawQuery;
+
+  const mongoQuery = query
+    ? {
+      $or: [
+        { customerCode: buildRegex(query) },
+        { phone: buildRegex(query) },
+        { name: buildRegex(query) },
+        { email: buildRegex(query) }
+      ]
+    }
+    : {};
+
+  const users = await User.find(mongoQuery)
+    .select('name email phone avatar role walletBalance loyaltyPoints customerCode privateDiscountCodes customerCareHistory inStoreSpentTotal')
+    .sort({ createdAt: -1 })
+    .limit(query ? 30 : 40);
+
+  await ensureUsersHaveCodes(users);
+  res.json(users.map(serializeCustomerCareUser));
+});
+
+export const applyCustomerCareAction = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return res.status(404).json({ message: 'المستخدم غير موجود' });
+  }
+
+  await ensureCustomerCode(user);
+
+  const actionType = String(req.body.actionType || '').trim();
+  const note = String(req.body.note || '').trim();
+
+  if (!['wallet_credit', 'points_credit', 'discount_code', 'store_purchase'].includes(actionType)) {
+    return res.status(400).json({ message: 'نوع العملية غير صالح' });
+  }
+
+  if (actionType === 'wallet_credit') {
+    const amount = Math.max(0, Number(req.body.amount || 0));
+    if (!amount) {
+      return res.status(400).json({ message: 'أدخل مبلغًا صحيحًا للمحفظة' });
+    }
+
+    user.walletBalance = Number(user.walletBalance || 0) + amount;
+    user.customerCareHistory = [
+      {
+        type: 'wallet_credit',
+        amount,
+        note: note || 'إضافة رصيد للمحفظة من قسم إرضاء العميل',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.customerCareHistory) ? user.customerCareHistory : [])
+    ].slice(0, 40);
+  }
+
+  if (actionType === 'points_credit') {
+    const points = Math.max(0, Number(req.body.points || req.body.amount || 0));
+    if (!points) {
+      return res.status(400).json({ message: 'أدخل عدد نقاط صحيح' });
+    }
+
+    user.loyaltyPoints = Number(user.loyaltyPoints || 0) + points;
+    user.loyaltyHistory = [
+      {
+        amount: points,
+        reason: note || 'إضافة نقاط من قسم إرضاء العميل',
+        source: 'customer-care',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+    ].slice(0, 50);
+    user.customerCareHistory = [
+      {
+        type: 'points_credit',
+        points,
+        note: note || 'إضافة نقاط يدوية',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.customerCareHistory) ? user.customerCareHistory : [])
+    ].slice(0, 40);
+  }
+
+  if (actionType === 'discount_code') {
+    const code = normalizeCode(req.body.code || buildPrivateDiscountCode(user.customerCode));
+    const type = req.body.type === 'percent' ? 'percent' : 'fixed';
+    const value = Math.max(0, Number(req.body.value || 0));
+    const minOrderAmount = Math.max(0, Number(req.body.minOrderAmount || 0));
+    const maxDiscount = Math.max(0, Number(req.body.maxDiscount || 0));
+    const usageLimit = Math.max(1, Number(req.body.usageLimit || 1));
+    const expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
+
+    if (!code || !value) {
+      return res.status(400).json({ message: 'بيانات كود الخصم غير مكتملة' });
+    }
+
+    const duplicatedOnUser = (user.privateDiscountCodes || []).some((item) => normalizeCode(item.code) === code);
+    const duplicatedOnAnotherUser = await User.exists({
+      _id: { $ne: user._id },
+      'privateDiscountCodes.code': code
+    });
+
+    if (duplicatedOnUser || duplicatedOnAnotherUser) {
+      return res.status(400).json({ message: 'كود الخصم مستخدم بالفعل' });
+    }
+
+    user.privateDiscountCodes = [
+      {
+        code,
+        type,
+        value,
+        minOrderAmount,
+        maxDiscount,
+        usageLimit,
+        usedCount: 0,
+        active: true,
+        expiresAt: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null,
+        note,
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.privateDiscountCodes) ? user.privateDiscountCodes : [])
+    ].slice(0, 20);
+
+    user.customerCareHistory = [
+      {
+        type: 'discount_code',
+        code,
+        amount: value,
+        note: note || 'إضافة كود خصم خاص',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.customerCareHistory) ? user.customerCareHistory : [])
+    ].slice(0, 40);
+  }
+
+  if (actionType === 'store_purchase') {
+    const amount = Math.max(0, Number(req.body.amount || 0));
+    const awardedPoints = Math.max(0, Math.floor(amount));
+
+    if (!amount) {
+      return res.status(400).json({ message: 'أدخل مبلغ شراء صحيح' });
+    }
+
+    user.inStoreSpentTotal = Number(user.inStoreSpentTotal || 0) + amount;
+    user.loyaltyPoints = Number(user.loyaltyPoints || 0) + awardedPoints;
+    user.loyaltyHistory = [
+      {
+        amount: awardedPoints,
+        reason: note || 'نقاط من شراء داخل المحل',
+        source: 'store-purchase',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.loyaltyHistory) ? user.loyaltyHistory : [])
+    ].slice(0, 50);
+    user.customerCareHistory = [
+      {
+        type: 'store_purchase',
+        amount,
+        points: awardedPoints,
+        note: note || 'تسجيل شراء من داخل المحل',
+        createdBy: req.user._id
+      },
+      ...(Array.isArray(user.customerCareHistory) ? user.customerCareHistory : [])
+    ].slice(0, 40);
+  }
+
+  await user.save();
+
+  res.json({
+    message: 'تم تنفيذ العملية بنجاح',
+    user: serializeCustomerCareUser(user)
+  });
 });
 
 export const updateUserRole = asyncHandler(async (req, res) => {
   const { role, permissions } = req.body;
   const allowedRoles = ['admin', 'user', 'employee'];
-  const allowedPermissions = ['manage_products', 'manage_orders', 'manage_support'];
+  const allowedPermissions = ['manage_products', 'manage_orders', 'manage_support', 'manage_customers'];
 
   if (!allowedRoles.includes(role)) {
     return res.status(400).json({ message: 'نوع الحساب غير صالح' });
@@ -93,6 +332,7 @@ export const updateUserRole = asyncHandler(async (req, res) => {
 });
 
 export const getMySettings = asyncHandler(async (req, res) => {
+  await ensureCustomerCode(req.user);
   res.json(serializeUser(req.user));
 });
 
@@ -103,6 +343,8 @@ export const updateMySettings = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(404).json({ message: 'المستخدم غير موجود' });
   }
+
+  await ensureCustomerCode(user);
 
   if (typeof name === 'string' && name.trim()) {
     user.name = name.trim();
@@ -169,6 +411,8 @@ export const uploadMyAvatar = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(404).json({ message: 'المستخدم غير موجود' });
   }
+
+  await ensureCustomerCode(user);
 
   const result = await uploadToCloudinary(req.file.buffer, 'alwekala/avatars');
   user.avatar = result.secure_url;

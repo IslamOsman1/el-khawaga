@@ -91,6 +91,7 @@ export const createStripeCheckoutSession = asyncHandler(async (req, res) => {
     shippingAddress,
     items,
     discountCode: pricing.discountCode,
+    discountCodeSource: pricing.discountCodeSource,
     discountCodeAmount: pricing.discountCodeAmount,
     loyaltyPointsUsed: pricing.loyaltyPointsUsed,
     loyaltyPointsDiscount: pricing.loyaltyPointsDiscount,
@@ -181,7 +182,13 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
     await consumeLoyaltyPoints(payload.userId, order, payload.loyaltyPointsUsed);
 
     if (payload.discountCode) {
-      await incrementDiscountCodeUsage(settings, payload.discountCode);
+      const freshUser = payload.discountCodeSource === 'private' ? await User.findById(payload.userId) : null;
+      await incrementDiscountCodeUsage({
+        settings,
+        user: freshUser,
+        code: payload.discountCode,
+        source: payload.discountCodeSource
+      });
     }
   }
 
