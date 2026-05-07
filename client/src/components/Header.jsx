@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Camera, LayoutDashboard, LogOut, Moon, Search, ShoppingCart, Sun, UserRound, X } from 'lucide-react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import toast from 'react-hot-toast';
 import Logo from './Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -13,9 +14,8 @@ export default function Header({ theme, onToggleTheme }) {
   const location = useLocation();
   const inputRef = useRef(null);
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const frameRef = useRef(0);
-  const detectorRef = useRef(null);
+  const codeReaderRef = useRef(null);
+  const scannerControlsRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -32,13 +32,8 @@ export default function Header({ theme, onToggleTheme }) {
   }, [location.pathname, location.search]);
 
   useEffect(() => () => {
-    if (frameRef.current) {
-      window.cancelAnimationFrame(frameRef.current);
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
+    scannerControlsRef.current?.stop?.();
+    codeReaderRef.current?.reset?.();
   }, []);
 
   const submitSearch = (event) => {
@@ -62,15 +57,9 @@ export default function Header({ theme, onToggleTheme }) {
   };
 
   const stopScanner = () => {
-    if (frameRef.current) {
-      window.cancelAnimationFrame(frameRef.current);
-      frameRef.current = 0;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
+    scannerControlsRef.current?.stop?.();
+    scannerControlsRef.current = null;
+    codeReaderRef.current?.reset?.();
   };
 
   const closeScanner = () => {
@@ -90,67 +79,63 @@ export default function Header({ theme, onToggleTheme }) {
     toast.success(`تم العثور على الباركود: ${code}`);
   };
 
-  const scanFrame = async () => {
-    if (!videoRef.current || !detectorRef.current) return;
-
-    try {
-      const barcodes = await detectorRef.current.detect(videoRef.current);
-      const foundCode = barcodes.find((item) => item.rawValue)?.rawValue;
-
-      if (foundCode) {
-        openBarcodeResult(foundCode);
-        return;
-      }
-    } catch {
-      setScannerStatus('تعذر قراءة الباركود حاليًا، حاول تقريب الكاميرا أو تحسين الإضاءة.');
-    }
-
-    frameRef.current = window.requestAnimationFrame(scanFrame);
-  };
-
   const requestCameraAccess = async () => {
     setScannerStarting(true);
-    setScannerStatus('جارٍ طلب إذن الكاميرا...');
+    setScannerStatus('جارٍ تشغيل الكاميرا وبدء قراءة الباركود...');
 
     if (!window.isSecureContext) {
-      setScannerStatus('فتح الكاميرا على iPhone يتطلب رابط https مباشر للموقع.');
+      setScannerStatus('فتح الكاميرا يتطلب رابط https مباشر للموقع.');
       setScannerStarting(false);
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setScannerStatus('المتصفح لا يدعم فتح الكاميرا.');
+      setScannerStatus('هذا المتصفح لا يدعم فتح الكاميرا.');
       setScannerStarting(false);
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
+      stopScanner();
 
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
+      if (!codeReaderRef.current) {
+        codeReaderRef.current = new BrowserMultiFormatReader();
       }
 
-      if (!('BarcodeDetector' in window)) {
-        setScannerStatus('تم فتح الكاميرا، لكن Safari على iPhone لا يدعم قراءة الباركود تلقائيًا من المتصفح حاليًا.');
-        setScannerStarting(false);
-        return;
-      }
+      const controls = await codeReaderRef.current.decodeFromConstraints(
+        {
+          video: {
+            facingMode: { ideal: 'environment' }
+          },
+          audio: false
+        },
+        videoRef.current,
+        (result, error) => {
+          const code = result?.getText?.();
 
-      detectorRef.current = new window.BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code']
-      });
+          if (code) {
+            openBarcodeResult(code);
+            return;
+          }
 
+          if (!error) {
+            setScannerStatus('وجّه الكاميرا نحو الباركود...');
+            return;
+          }
+
+          if (error.name === 'NotFoundException' || error.name === 'ChecksumException' || error.name === 'FormatException') {
+            setScannerStatus('وجّه الكاميرا نحو الباركود...');
+            return;
+          }
+
+          setScannerStatus('تعذر قراءة الباركود حاليًا، حاول تقريب الكاميرا أو تحسين الإضاءة.');
+        }
+      );
+
+      scannerControlsRef.current = controls;
       setScannerStatus('وجّه الكاميرا نحو الباركود...');
-      frameRef.current = window.requestAnimationFrame(scanFrame);
     } catch {
-      setScannerStatus('تعذر تشغيل الكاميرا. تأكد أن الرابط المباشر للموقع مفتوح في Safari وتم السماح بالكاميرا.');
+      setScannerStatus('تعذر تشغيل الكاميرا. تأكد من السماح بالكاميرا وفتح الرابط المباشر للموقع.');
       setScannerStarting(false);
     }
   };
