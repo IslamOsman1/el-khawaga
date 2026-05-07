@@ -8,6 +8,7 @@ const productSchema = new mongoose.Schema({
   category: { type: String, required: true, index: true },
   subcategory: { type: String, default: '', index: true },
   brand: { type: String, default: 'Al Wekala' },
+  barcode: { type: String, default: '', trim: true, index: true },
   unit: { type: String, default: 'قطعة' },
   countInStock: { type: Number, required: true, min: 0, default: 0 },
   featured: { type: Boolean, default: false },

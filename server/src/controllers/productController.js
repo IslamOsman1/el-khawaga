@@ -4,10 +4,19 @@ import cloudinary from '../config/cloudinary.js';
 import { assertDeletePassword } from '../utils/deleteProtection.js';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
+const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export const getProducts = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 12;
-  const keyword = req.query.keyword ? { name: { $regex: req.query.keyword, $options: 'i' } } : {};
+  const keyword = req.query.keyword
+    ? {
+      $or: [
+        { name: { $regex: escapeRegex(req.query.keyword), $options: 'i' } },
+        { barcode: { $regex: escapeRegex(req.query.keyword), $options: 'i' } }
+      ]
+    }
+    : {};
   const category = req.query.category ? { category: req.query.category } : {};
   const subcategory = req.query.subcategory ? { subcategory: req.query.subcategory } : {};
   const isDeal = req.query.deals === 'true' ? { isDeal: true } : {};
@@ -32,6 +41,7 @@ export const getCategories = asyncHandler(async (_req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
   const data = {
     ...req.body,
+    barcode: String(req.body.barcode || '').trim(),
     inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? false
   };
 
@@ -51,6 +61,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
   Object.assign(product, {
     ...req.body,
+    barcode: String(req.body.barcode || '').trim(),
     inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? product.inAgencyCollection
   });
 

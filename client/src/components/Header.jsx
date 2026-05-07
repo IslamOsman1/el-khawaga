@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, UserRound, LayoutDashboard, LogOut, Search, Moon, Sun } from 'lucide-react';
 import Logo from './Logo.jsx';
@@ -45,13 +45,13 @@ export default function Header({ theme, onToggleTheme }) {
 
   return <header className="site-header">
     <div className="app-shell header-shell">
-      <div className="header-card">
+      <div className={`header-card${searchOpen ? ' search-active' : ''}`}>
         <Link to="/" className="brand" aria-label="Al Wekala Market">
           <Logo compact />
         </Link>
 
         <form className={`search-box${searchOpen ? ' mobile-open' : ''}`} onSubmit={submitSearch}>
-          <button type="submit" className="search-submit" aria-label="البحث" onClick={handleMobileSearchOpen}>
+          <button type="submit" className="search-submit" aria-label="Ø§Ù„Ø¨Ø­Ø«" onClick={handleMobileSearchOpen}>
             <Search size={24} />
           </button>
           <input
@@ -61,7 +61,7 @@ export default function Header({ theme, onToggleTheme }) {
             onFocus={() => {
               if (window.innerWidth <= 640) setSearchOpen(true);
             }}
-            placeholder="ابحث عن منتجات، عروض، فئات..."
+            placeholder="ابحث عن منتجات، باركود، عروض..."
           />
         </form>
 
@@ -70,26 +70,26 @@ export default function Header({ theme, onToggleTheme }) {
             type="button"
             className="round-action theme-toggle"
             onClick={onToggleTheme}
-            title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-            aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+            title={theme === 'dark' ? 'Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ÙØ§ØªØ­' : 'Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ø¯Ø§ÙƒÙ†'}
+            aria-label={theme === 'dark' ? 'Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ÙØ§ØªØ­' : 'Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ø¯Ø§ÙƒÙ†'}
           >
             {theme === 'dark' ? <Sun size={21} /> : <Moon size={21} />}
           </button>
 
-          <NavLink to="/cart" className="round-action cart-link" title="السلة" aria-label="السلة">
+          <NavLink to="/cart" className="round-action cart-link" title="Ø§Ù„Ø³Ù„Ø©" aria-label="Ø§Ù„Ø³Ù„Ø©">
             <ShoppingCart size={22} />
             {totals.count > 0 && <b>{totals.count}</b>}
           </NavLink>
 
-          {(user?.role === 'admin' || (user?.role === 'employee' && user?.permissions?.length > 0)) && <NavLink to="/admin" className="round-action" title="لوحة التحكم">
+          {(user?.role === 'admin' || (user?.role === 'employee' && user?.permissions?.length > 0)) && <NavLink to="/admin" className="round-action" title="Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…">
             <LayoutDashboard size={22} />
           </NavLink>}
 
           {user
-            ? <button className="round-action" onClick={logout} title="تسجيل الخروج"><LogOut size={22} /></button>
-            : <NavLink to="/login" className="round-action user-action" title="تسجيل الدخول"><UserRound size={22} /></NavLink>}
+            ? <button className="round-action" onClick={logout} title="ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬"><LogOut size={22} /></button>
+            : <NavLink to="/login" className="round-action user-action" title="ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„"><UserRound size={22} /></NavLink>}
 
-          {user && <NavLink to="/profile" className="profile-avatar-trigger" title="الملف الشخصي" aria-label="الملف الشخصي">
+          {user && <NavLink to="/profile" className="profile-avatar-trigger" title="Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ" aria-label="Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ">
             {user.avatar ? <img src={user.avatar} alt={displayName} className="profile-avatar-image" /> : initials}
           </NavLink>}
         </div>
@@ -97,3 +97,5 @@ export default function Header({ theme, onToggleTheme }) {
     </div>
   </header>;
 }
+
+
