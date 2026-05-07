@@ -122,6 +122,8 @@ export const updateSettings = asyncHandler(async (req, res) => {
     address,
     workingHours,
     whatsapp,
+    facebookUrl,
+    instagramUrl,
     about,
     policies,
     home,
@@ -140,6 +142,8 @@ export const updateSettings = asyncHandler(async (req, res) => {
   if (typeof address === 'string') settings.address = address;
   if (typeof workingHours === 'string') settings.workingHours = workingHours;
   if (typeof whatsapp === 'string') settings.whatsapp = whatsapp;
+  if (typeof facebookUrl === 'string') settings.facebookUrl = facebookUrl;
+  if (typeof instagramUrl === 'string') settings.instagramUrl = instagramUrl;
 
   if (about) {
     settings.about = {

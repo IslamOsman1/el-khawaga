@@ -70,6 +70,10 @@ export default function App() {
     firstPathRef.current = location.pathname;
   }, [location.pathname]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+
   return <div className="app-root">
     <AppSplash visible={bootSplashVisible || routeSplashVisible} routeChanging={!bootSplashVisible && routeSplashVisible} />
     <Header

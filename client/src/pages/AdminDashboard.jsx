@@ -51,6 +51,8 @@ const defaultSettingsForm = {
   address: '',
   workingHours: '',
   whatsapp: '',
+  facebookUrl: '',
+  instagramUrl: '',
   about: {
     title: '',
     description: '',
@@ -1063,6 +1065,8 @@ export default function AdminDashboard() {
                   <Field label="العنوان"><input value={settingsForm.address} onChange={(event) => changeSettingsField(['address'], event.target.value)} placeholder="العنوان" /></Field>
                   <Field label="مواعيد العمل"><input value={settingsForm.workingHours} onChange={(event) => changeSettingsField(['workingHours'], event.target.value)} placeholder="مواعيد العمل" /></Field>
                   <Field label="واتساب"><input value={settingsForm.whatsapp} onChange={(event) => changeSettingsField(['whatsapp'], event.target.value)} placeholder="رقم واتساب" /></Field>
+                  <Field label="رابط فيس بوك"><input value={settingsForm.facebookUrl} onChange={(event) => changeSettingsField(['facebookUrl'], event.target.value)} placeholder="https://facebook.com/your-page" /></Field>
+                  <Field label="رابط إنستجرام"><input value={settingsForm.instagramUrl} onChange={(event) => changeSettingsField(['instagramUrl'], event.target.value)} placeholder="https://instagram.com/your-page" /></Field>
                 </div>
                 <div className="admin-category-inventory">
                   <div className="admin-category-inventory-head">

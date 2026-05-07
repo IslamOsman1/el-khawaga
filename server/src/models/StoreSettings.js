@@ -73,6 +73,8 @@ const storeSettingsSchema = new mongoose.Schema({
   address: { type: String, default: 'القاهرة، مصر' },
   workingHours: { type: String, default: 'يوميًا من 9 صباحًا حتى 11 مساءً' },
   whatsapp: { type: String, default: '' },
+  facebookUrl: { type: String, default: '' },
+  instagramUrl: { type: String, default: '' },
   about: {
     title: { type: String, default: 'من نحن' },
     description: {

@@ -276,6 +276,8 @@ export const serializePublicSettings = (settings) => ({
   address: settings.address,
   workingHours: settings.workingHours,
   whatsapp: settings.whatsapp,
+  facebookUrl: settings.facebookUrl,
+  instagramUrl: settings.instagramUrl,
   about: settings.about,
   policies: settings.policies,
   home: settings.home,

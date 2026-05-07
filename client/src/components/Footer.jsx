@@ -1,23 +1,64 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import {
   ClipboardList,
+  Facebook,
   Grid2X2,
   Heart,
   Home,
   Info,
+  Instagram,
+  MessageCircle,
   MoreHorizontal,
   Package,
   Phone,
   Settings,
   ShieldCheck,
-  ShoppingCart
+  ShoppingCart,
+  Store,
+  Truck,
+  Wallet
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
+
+const normalizeUrl = (value) => {
+  const url = String(value || '').trim();
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+};
 
 export default function Footer() {
   const { totals } = useCart();
+  const { settings } = useStoreSettings();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const socialLinks = useMemo(() => {
+    const whatsappDigits = String(settings?.whatsapp || '').replace(/\D/g, '');
+
+    return [
+      { key: 'facebook', label: 'فيس بوك', href: normalizeUrl(settings?.facebookUrl), icon: Facebook },
+      { key: 'instagram', label: 'إنستجرام', href: normalizeUrl(settings?.instagramUrl), icon: Instagram },
+      { key: 'whatsapp', label: 'واتساب', href: whatsappDigits ? `https://wa.me/${whatsappDigits}` : '', icon: MessageCircle }
+    ].filter((item) => item.href);
+  }, [settings?.facebookUrl, settings?.instagramUrl, settings?.whatsapp]);
+
+  const quickLinks = [
+    { to: '/', label: 'الرئيسية' },
+    { to: '/categories', label: 'الفئات' },
+    { to: '/alwekala-products', label: 'منتجات الوكالة' },
+    { to: '/offers', label: 'العروض' },
+    { to: '/contact', label: 'تواصل معنا' },
+    { to: '/policies', label: 'السياسات' }
+  ];
+
+  const serviceLinks = [
+    { to: '/cart', label: totals.count > 0 ? `السلة (${totals.count})` : 'السلة', icon: ShoppingCart },
+    { to: '/orders', label: 'طلباتي', icon: ClipboardList },
+    { to: '/contact', label: settings?.supportPhone || 'الدعم', icon: Phone },
+    { to: '/policies/shipping', label: 'سياسة الشحن', icon: Truck },
+    { to: '/policies/refund', label: 'سياسة الاسترجاع', icon: Wallet }
+  ];
 
   return (
     <>
@@ -71,17 +112,60 @@ export default function Footer() {
 
       <footer className="footer">
         <div className="container footer-grid">
-          <div>
-            <strong>Al Wekala Market</strong>
-            <p>متجر إلكتروني سريع لشراء البقالة والمنتجات اليومية الطازجة مع عروض مستمرة وتجربة استخدام بسيطة.</p>
+          <div className="footer-brand-block">
+            <div className="footer-title-row">
+              <Store size={20} />
+              <strong>{settings?.storeName || 'Al Wekala Market'}</strong>
+            </div>
+            <p>{settings?.storeTagline || 'متجر إلكتروني سريع لشراء المنتجات اليومية بسهولة.'}</p>
+            <div className="footer-contact-list">
+              {settings?.supportPhone ? (
+                <a href={`tel:${settings.supportPhone}`} className="footer-inline-link">
+                  <Phone size={16} />
+                  <span>{settings.supportPhone}</span>
+                </a>
+              ) : null}
+
+              <div className="footer-email-row">
+                {settings?.supportEmail ? (
+                  <a href={`mailto:${settings.supportEmail}`} className="footer-inline-link footer-email-link">
+                    <Info size={16} />
+                    <span>{settings.supportEmail}</span>
+                  </a>
+                ) : null}
+
+                {socialLinks.length ? (
+                  <div className="footer-inline-socials" aria-label="روابط التواصل الاجتماعي">
+                    {socialLinks.map(({ key, label, href, icon: Icon }) => (
+                      <a key={key} href={href} target="_blank" rel="noreferrer" className="footer-social-link inline" aria-label={label} title={label}>
+                        <Icon size={16} />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
+
           <div>
             <strong>روابط سريعة</strong>
-            <p>الرئيسية • الفئات • منتجات الوكالة • العروض • السياسات</p>
+            <div className="footer-links-list">
+              {quickLinks.map((link) => (
+                <Link key={link.to} to={link.to} className="footer-text-link">{link.label}</Link>
+              ))}
+            </div>
           </div>
+
           <div>
             <strong>الخدمة</strong>
-            <p>توصيل سريع • دفع عند الاستلام • دعم مستمر • سياسة الشحن • سياسة الاسترجاع</p>
+            <div className="footer-links-list">
+              {serviceLinks.map(({ to, label, icon: Icon }) => (
+                <Link key={to} to={to} className="footer-text-link footer-service-link">
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
