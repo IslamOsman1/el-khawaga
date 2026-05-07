@@ -2,10 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Camera, LayoutDashboard, LogOut, Moon, Search, ShoppingCart, Sun, UserRound, X } from 'lucide-react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import toast from 'react-hot-toast';
 import Logo from './Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
+
+const barcodeHints = new Map();
+barcodeHints.set(DecodeHintType.POSSIBLE_FORMATS, [
+  BarcodeFormat.EAN_13,
+  BarcodeFormat.EAN_8,
+  BarcodeFormat.UPC_A,
+  BarcodeFormat.UPC_E,
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.CODE_39,
+  BarcodeFormat.ITF
+]);
+barcodeHints.set(DecodeHintType.TRY_HARDER, true);
 
 export default function Header({ theme, onToggleTheme }) {
   const { user, logout } = useAuth();
@@ -99,13 +112,19 @@ export default function Header({ theme, onToggleTheme }) {
       stopScanner();
 
       if (!codeReaderRef.current) {
-        codeReaderRef.current = new BrowserMultiFormatReader();
+        codeReaderRef.current = new BrowserMultiFormatReader(barcodeHints, {
+          delayBetweenScanAttempts: 60,
+          delayBetweenScanSuccess: 900,
+          tryPlayVideoTimeout: 5000
+        });
       }
 
       const controls = await codeReaderRef.current.decodeFromConstraints(
         {
           video: {
-            facingMode: { ideal: 'environment' }
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           },
           audio: false
         },
@@ -124,7 +143,7 @@ export default function Header({ theme, onToggleTheme }) {
           }
 
           if (error.name === 'NotFoundException' || error.name === 'ChecksumException' || error.name === 'FormatException') {
-            setScannerStatus('وجّه الكاميرا نحو الباركود...');
+            setScannerStatus('وجّه الكاميرا نحو الباركود وثبّت الكود داخل الإطار لثانية واحدة...');
             return;
           }
 
@@ -133,7 +152,7 @@ export default function Header({ theme, onToggleTheme }) {
       );
 
       scannerControlsRef.current = controls;
-      setScannerStatus('وجّه الكاميرا نحو الباركود...');
+      setScannerStatus('وجّه الكاميرا نحو الباركود وثبّت الكود داخل الإطار لثانية واحدة...');
     } catch {
       setScannerStatus('تعذر تشغيل الكاميرا. تأكد من السماح بالكاميرا وفتح الرابط المباشر للموقع.');
       setScannerStarting(false);
