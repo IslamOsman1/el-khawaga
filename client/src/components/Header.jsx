@@ -13,6 +13,7 @@ export default function Header({ theme, onToggleTheme }) {
   const location = useLocation();
   const inputRef = useRef(null);
   const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
   const streamRef = useRef(null);
   const frameRef = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -90,12 +91,48 @@ export default function Header({ theme, onToggleTheme }) {
     setScannerStatus('جارٍ طلب إذن الكاميرا...');
   };
 
+  const handleCaptureFallback = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    if (!('BarcodeDetector' in window)) {
+      setScannerStatus('تم فتح الكاميرا البديلة، لكن هذا المتصفح لا يدعم قراءة الباركود من الصور تلقائيًا.');
+      return;
+    }
+
+    try {
+      const detector = new window.BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code']
+      });
+      const bitmap = await createImageBitmap(file);
+      const barcodes = await detector.detect(bitmap);
+      const foundCode = barcodes.find((item) => item.rawValue)?.rawValue;
+
+      if (foundCode) {
+        openBarcodeResult(foundCode);
+        return;
+      }
+
+      setScannerStatus('تم التقاط الصورة، لكن لم يتم العثور على باركود واضح. حاول الاقتراب أكثر من الكود.');
+    } catch {
+      setScannerStatus('تعذر قراءة الباركود من الصورة الملتقطة.');
+    }
+  };
+
   useEffect(() => {
     if (!scannerOpen || !scannerStarting) return undefined;
 
     let cancelled = false;
 
     const startScanner = async () => {
+      if (!window.isSecureContext) {
+        setScannerStatus('على iPhone لن تعمل الكاميرا من رابط غير آمن. افتح الموقع عبر https أو localhost.');
+        setScannerStarting(false);
+        return;
+      }
+
       if (!navigator.mediaDevices?.getUserMedia) {
         setScannerStatus('المتصفح لا يدعم فتح الكاميرا.');
         setScannerStarting(false);
@@ -253,14 +290,28 @@ export default function Header({ theme, onToggleTheme }) {
             </div>
 
             {!scannerStarting ? (
-              <button type="button" className="primary-btn barcode-scanner-allow" onClick={requestCameraAccess}>
-                السماح بالكاميرا
-              </button>
+              <>
+                <button type="button" className="primary-btn barcode-scanner-allow" onClick={requestCameraAccess}>
+                  السماح بالكاميرا
+                </button>
+                <button type="button" className="secondary-btn barcode-scanner-capture" onClick={() => fileInputRef.current?.click()}>
+                  التقاط صورة للباركود
+                </button>
+              </>
             ) : null}
 
             <button type="button" className="secondary-btn barcode-scanner-cancel" onClick={closeScanner}>
               إلغاء
             </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="visually-hidden"
+              onChange={handleCaptureFallback}
+            />
           </div>
         </div>
       ) : null}
