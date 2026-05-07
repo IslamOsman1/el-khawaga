@@ -9,14 +9,13 @@ import { calculateShippingForGovernorate } from '../utils/shipping.js';
 const checkoutDraftKey = 'checkout-draft';
 
 const buildInitialAddress = (user) => {
-  const firstAddress = user?.addresses?.[0];
   return {
     fullName: user?.name || '',
     phone: user?.phone || '',
-    city: firstAddress?.governorate || '',
-    area: firstAddress?.city || '',
-    street: firstAddress?.street || firstAddress?.address || '',
-    notes: firstAddress?.notes || ''
+    city: '',
+    area: '',
+    street: '',
+    notes: ''
   };
 };
 
@@ -35,7 +34,7 @@ export default function Checkout() {
   const { items, totals } = useCart();
   const { settings } = useStoreSettings();
   const [shippingAddress, setAddress] = useState(() => buildInitialAddress(user));
-  const [selectedAddressId, setSelectedAddressId] = useState(() => user?.addresses?.[0]?._id || '');
+  const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [discountCode, setDiscountCode] = useState('');
   const [redeemLoyaltyPoints, setRedeemLoyaltyPoints] = useState(false);
@@ -80,15 +79,12 @@ export default function Checkout() {
       ...current,
       fullName: current.fullName || nextBase.fullName,
       phone: current.phone || nextBase.phone,
-      city: current.city || nextBase.city,
-      area: current.area || nextBase.area,
-      street: current.street || nextBase.street,
-      notes: current.notes || nextBase.notes
+      city: current.city || '',
+      area: current.area || '',
+      street: current.street || '',
+      notes: current.notes || ''
     }));
-    if (!selectedAddressId && user?.addresses?.[0]?._id) {
-      setSelectedAddressId(user.addresses[0]._id);
-    }
-  }, [selectedAddressId, user]);
+  }, [user]);
 
   useEffect(() => {
     const draft = sessionStorage.getItem(checkoutDraftKey);
@@ -109,6 +105,13 @@ export default function Checkout() {
       return;
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!selectedAddressId) return;
+    const selectedAddress = savedAddresses.find((item) => item._id === selectedAddressId);
+    if (!selectedAddress) return;
+    setAddress(buildAddressFromSavedAddress(selectedAddress, user));
+  }, [savedAddresses, selectedAddressId, user]);
 
   useEffect(() => {
     if (!items.length) navigate('/cart');
@@ -145,17 +148,13 @@ export default function Checkout() {
   const changeSavedAddress = (event) => {
     const nextId = event.target.value;
     setSelectedAddressId(nextId);
-    const selectedAddress = savedAddresses.find((item) => item._id === nextId);
-    if (!selectedAddress) {
+    if (!nextId) {
       setAddress((current) => ({
         ...current,
         fullName: user?.name || current.fullName || '',
         phone: user?.phone || current.phone || ''
       }));
-      return;
     }
-
-    setAddress(buildAddressFromSavedAddress(selectedAddress, user));
   };
 
   const submit = (event) => {
