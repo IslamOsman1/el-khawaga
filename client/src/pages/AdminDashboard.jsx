@@ -169,15 +169,27 @@ export default function AdminDashboard() {
 
   const submitProduct = async (event) => {
     event.preventDefault();
-    const formData = new FormData();
-    Object.entries(productForm).forEach(([key, value]) => formData.append(key, value));
-    if (image) formData.append('image', image);
+    const payload = {
+      ...productForm,
+      barcode: String(productForm.barcode || '').trim()
+    };
+
+    let requestBody = payload;
+    let config;
+
+    if (image) {
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+      formData.append('image', image);
+      requestBody = formData;
+      config = { headers: { 'Content-Type': 'multipart/form-data' } };
+    }
 
     try {
       if (editing) {
-        await api.put(`/products/${editing}`, formData);
+        await api.put(`/products/${editing}`, requestBody, config);
       } else {
-        await api.post('/products', formData);
+        await api.post('/products', requestBody, config);
       }
 
       toast.success(editing ? 'تم تعديل المنتج' : 'تمت إضافة المنتج');
