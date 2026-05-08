@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
+import { sendPushToUsers } from '../utils/pushNotifications.js';
 import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { calculateEarnedLoyaltyPoints, calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
@@ -93,6 +94,42 @@ const awardLoyaltyPointsIfEligible = async (order) => {
   await user.save();
 };
 
+const notifyOrderManagers = async (order, customer) => {
+  const managers = await User.find({
+    $or: [
+      { role: 'admin' },
+      { role: 'employee', permissions: 'manage_orders' }
+    ]
+  }).select('pushSubscriptions');
+
+  await sendPushToUsers(managers, {
+    title: 'طلب جديد في المتجر',
+    body: `وصلك طلب جديد من ${customer?.name || 'عميل جديد'}`,
+    url: '/admin?section=orders',
+    tag: `order-created-${order._id}`,
+    data: {
+      orderId: String(order._id),
+      type: 'order-created'
+    }
+  });
+};
+
+const notifyOrderCustomer = async (order, body) => {
+  const customer = await User.findById(order.user).select('pushSubscriptions');
+  if (!customer) return;
+
+  await sendPushToUsers([customer], {
+    title: 'تحديث حالة الطلب',
+    body,
+    url: '/orders',
+    tag: `order-status-${order._id}`,
+    data: {
+      orderId: String(order._id),
+      type: 'order-status'
+    }
+  });
+};
+
 export const createOrder = asyncHandler(async (req, res) => {
   const { orderItems, shippingAddress, paymentMethod, discountCode, redeemLoyaltyPoints } = req.body;
   if (!orderItems?.length) {
@@ -150,6 +187,8 @@ export const createOrder = asyncHandler(async (req, res) => {
       source: pricing.discountCodeSource
     });
   }
+
+  await notifyOrderManagers(order, req.user);
 
   res.status(201).json(order);
 });
@@ -239,5 +278,6 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
   await awardLoyaltyPointsIfEligible(order);
   await order.save();
+  await notifyOrderCustomer(order, `تم تحديث طلبك إلى: ${order.status}`);
   res.json(order);
 });

@@ -27,7 +27,7 @@ import {
 import { BrowserQRCodeReader } from '@zxing/browser';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
@@ -309,6 +309,7 @@ function SaveSectionButton({ saving, label }) {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supportConversations, setSupportConversations] = useState([]);
@@ -873,6 +874,15 @@ export default function AdminDashboard() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [activeSection, customerSearch, canSearchCustomerAccounts]);
+
+  useEffect(() => {
+    const section = new URLSearchParams(location.search).get('section');
+    if (!section) return;
+    const exists = dashboardSections.some((entry) => entry.id === section);
+    if (exists) {
+      setActiveSection(section);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (!visibleDashboardSections.some((section) => section.id === activeSection)) {

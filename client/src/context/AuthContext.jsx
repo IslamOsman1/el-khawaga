@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
+import { removePushSubscription } from '../utils/pushNotifications.js';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    removePushSubscription().catch(() => undefined);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

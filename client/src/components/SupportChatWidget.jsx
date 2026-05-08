@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BellRing, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
@@ -9,6 +9,7 @@ import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
 export default function SupportChatWidget() {
   const { user } = useAuth();
   const { settings } = useStoreSettings();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [message, setMessage] = useState('');
@@ -58,6 +59,13 @@ export default function SupportChatWidget() {
     setConversation(data);
     return data;
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('support') === 'open') {
+      setOpen(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (!open || !isCustomer) return undefined;

@@ -48,6 +48,18 @@ const customerCareEntrySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 }, { _id: true });
 
+const pushSubscriptionSchema = new mongoose.Schema({
+  endpoint: { type: String, required: true, trim: true },
+  expirationTime: { type: Number, default: null },
+  keys: {
+    p256dh: { type: String, required: true, trim: true },
+    auth: { type: String, required: true, trim: true }
+  },
+  userAgent: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: true });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -63,6 +75,7 @@ const userSchema = new mongoose.Schema({
   loyaltyHistory: { type: [loyaltyPointEntrySchema], default: [] },
   privateDiscountCodes: { type: [privateDiscountCodeSchema], default: [] },
   customerCareHistory: { type: [customerCareEntrySchema], default: [] },
+  pushSubscriptions: { type: [pushSubscriptionSchema], default: [] },
   inStoreSpentTotal: { type: Number, default: 0, min: 0 },
   resetPasswordCodeHash: { type: String, default: '' },
   resetPasswordCodeExpires: { type: Date, default: null },

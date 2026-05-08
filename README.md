@@ -121,6 +121,9 @@ Important values:
 - `FACEBOOK_APP_ID`
 - `FACEBOOK_APP_SECRET`
 - `STRIPE_SECRET_KEY`
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT`
 
 ### Client
 
@@ -191,6 +194,9 @@ Important Render backend values:
 - `SMTP_USER=...`
 - `SMTP_PASS=...`
 - `EMAIL_FROM=Al Wekala <your-email@example.com>`
+- `VAPID_PUBLIC_KEY=...`
+- `VAPID_PRIVATE_KEY=...`
+- `VAPID_SUBJECT=mailto:your-email@example.com`
 
 Health check path:
 
@@ -224,6 +230,9 @@ Before the first production deploy, fill in the prompted environment variables i
   - `SMTP_USER`
   - `SMTP_PASS`
   - `EMAIL_FROM`
+  - `VAPID_PUBLIC_KEY`
+  - `VAPID_PRIVATE_KEY`
+  - `VAPID_SUBJECT`
 - Frontend:
   - `VITE_API_URL`
   - `VITE_STRIPE_PUBLISHABLE_KEY`
@@ -237,8 +246,40 @@ Before the first production deploy, fill in the prompted environment variables i
 - Configure Cloudinary production credentials
 - Configure Stripe production keys
 - Configure SMTP credentials for forgot-password emails
+- Configure VAPID keys for browser push notifications
 - Add your production domain in Google app settings
 - Do not commit real `.env` files
+
+## Browser Push Notifications
+
+The project now supports real browser push notifications for:
+
+- New orders in the admin dashboard
+- Order status updates for customers
+- New support messages for admins / support staff
+- New support replies for customers
+
+Requirements:
+
+- HTTPS in production, or `localhost` during development
+- Service worker support in the browser
+- VAPID keys configured on the backend
+
+Add these server environment variables:
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT`
+
+Example subject:
+
+- `VAPID_SUBJECT=mailto:your-email@example.com`
+
+Generate VAPID keys from the `server` folder:
+
+```bash
+npx web-push generate-vapid-keys
+```
 
 ## Useful Commands
 

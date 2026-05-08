@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import SupportConversation from '../models/SupportConversation.js';
 import User from '../models/User.js';
+import { sendPushToUsers } from '../utils/pushNotifications.js';
 
 const supportPopulate = [
   { path: 'customer', select: 'name email avatar' },
@@ -19,6 +20,49 @@ const findSupportAgent = async () => {
 };
 
 const populateConversation = async (conversation) => conversation.populate(supportPopulate);
+
+const notifySupportTeam = async (conversation, text) => {
+  let recipients = [];
+
+  if (conversation.assignedEmployee) {
+    const assigned = await User.findById(conversation.assignedEmployee).select('pushSubscriptions');
+    recipients = assigned ? [assigned] : [];
+  } else {
+    recipients = await User.find({
+      $or: [
+        { role: 'admin' },
+        { role: 'employee', permissions: 'manage_support' }
+      ]
+    }).select('pushSubscriptions');
+  }
+
+  await sendPushToUsers(recipients, {
+    title: 'رسالة دعم جديدة',
+    body: text,
+    url: '/admin?section=support',
+    tag: `support-customer-${conversation._id}`,
+    data: {
+      conversationId: String(conversation._id),
+      type: 'support-customer-message'
+    }
+  });
+};
+
+const notifySupportCustomer = async (conversation, text) => {
+  const customer = await User.findById(conversation.customer).select('pushSubscriptions');
+  if (!customer) return;
+
+  await sendPushToUsers([customer], {
+    title: 'رد جديد من الدعم',
+    body: text,
+    url: '/?support=open',
+    tag: `support-reply-${conversation._id}`,
+    data: {
+      conversationId: String(conversation._id),
+      type: 'support-reply'
+    }
+  });
+};
 
 export const getMySupportConversation = asyncHandler(async (req, res) => {
   const conversation = await SupportConversation.findOne({ customer: req.user._id }).populate(supportPopulate);
@@ -50,6 +94,7 @@ export const sendMySupportMessage = asyncHandler(async (req, res) => {
   conversation.customerUnreadCount = 0;
   await conversation.save();
 
+  await notifySupportTeam(conversation, text);
   await populateConversation(conversation);
   res.status(201).json(conversation);
 });
@@ -120,6 +165,7 @@ export const replySupportConversation = asyncHandler(async (req, res) => {
   conversation.supportUnreadCount = 0;
   await conversation.save();
 
+  await notifySupportCustomer(conversation, text);
   await populateConversation(conversation);
   res.json(conversation);
 });

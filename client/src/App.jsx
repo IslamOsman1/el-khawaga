@@ -5,6 +5,7 @@ import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import SiteNotificationPrompt from './components/SiteNotificationPrompt.jsx';
 import SupportChatWidget from './components/SupportChatWidget.jsx';
+import { ensurePushSubscription } from './utils/pushNotifications.js';
 import Home from './pages/Home.jsx';
 import CategoriesPage from './pages/CategoriesPage.jsx';
 import CategoryPage from './pages/CategoryPage.jsx';
@@ -75,6 +76,12 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (window.Notification.permission !== 'granted') return;
+    ensurePushSubscription().catch(() => undefined);
+  }, [user]);
 
   return <div className="app-root">
     <AppSplash visible={bootSplashVisible || routeSplashVisible} routeChanging={!bootSplashVisible && routeSplashVisible} />

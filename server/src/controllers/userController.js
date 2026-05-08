@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import { buildCustomerQrValue, ensureCustomerCode } from '../utils/customerIdentity.js';
+import { getPushPublicKey, isPushConfigured, normalizePushSubscription } from '../utils/pushNotifications.js';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const normalizePhone = (phone = '') => {
@@ -361,6 +362,72 @@ export const updateUserRole = asyncHandler(async (req, res) => {
 export const getMySettings = asyncHandler(async (req, res) => {
   await ensureCustomerCode(req.user);
   res.json(serializeUser(req.user));
+});
+
+export const getMyPushConfig = asyncHandler(async (_req, res) => {
+  res.json({
+    enabled: isPushConfigured(),
+    publicKey: isPushConfigured() ? getPushPublicKey() : ''
+  });
+});
+
+export const saveMyPushSubscription = asyncHandler(async (req, res) => {
+  if (!isPushConfigured()) {
+    return res.status(503).json({ message: 'Push notifications are not configured yet' });
+  }
+
+  const subscription = normalizePushSubscription(req.body.subscription);
+  if (!subscription) {
+    return res.status(400).json({ message: 'بيانات اشتراك الإشعارات غير صالحة' });
+  }
+
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return res.status(404).json({ message: 'المستخدم غير موجود' });
+  }
+
+  const userAgent = String(req.body.userAgent || '').trim().slice(0, 500);
+
+  await User.updateMany(
+    { _id: { $ne: user._id }, 'pushSubscriptions.endpoint': subscription.endpoint },
+    { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } }
+  );
+
+  const subscriptions = Array.isArray(user.pushSubscriptions) ? [...user.pushSubscriptions] : [];
+  const existingIndex = subscriptions.findIndex((entry) => entry.endpoint === subscription.endpoint);
+  const nextEntry = {
+    endpoint: subscription.endpoint,
+    expirationTime: subscription.expirationTime,
+    keys: subscription.keys,
+    userAgent,
+    createdAt: existingIndex >= 0 ? subscriptions[existingIndex].createdAt || new Date() : new Date(),
+    updatedAt: new Date()
+  };
+
+  if (existingIndex >= 0) {
+    subscriptions[existingIndex] = nextEntry;
+  } else {
+    subscriptions.unshift(nextEntry);
+  }
+
+  user.pushSubscriptions = subscriptions.slice(0, 8);
+  await user.save();
+
+  res.json({ success: true });
+});
+
+export const removeMyPushSubscription = asyncHandler(async (req, res) => {
+  const endpoint = String(req.body.endpoint || '').trim();
+  if (!endpoint) {
+    return res.status(400).json({ message: 'رابط الاشتراك مطلوب' });
+  }
+
+  await User.updateOne(
+    { _id: req.user._id },
+    { $pull: { pushSubscriptions: { endpoint } } }
+  );
+
+  res.json({ success: true });
 });
 
 export const updateMySettings = asyncHandler(async (req, res) => {

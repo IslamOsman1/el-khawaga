@@ -2,7 +2,10 @@ import express from 'express';
 import {
   allUsers,
   applyCustomerCareAction,
+  getMyPushConfig,
   getMySettings,
+  removeMyPushSubscription,
+  saveMyPushSubscription,
   searchCustomerCareUsers,
   updateMySettings,
   updateUserRole,
@@ -14,6 +17,9 @@ import { upload } from '../middleware/upload.js';
 const router = express.Router();
 
 router.get('/me', protect, getMySettings);
+router.get('/me/push-config', protect, getMyPushConfig);
+router.post('/me/push-subscription', protect, saveMyPushSubscription);
+router.delete('/me/push-subscription', protect, removeMyPushSubscription);
 router.put('/me', protect, updateMySettings);
 router.post('/me/avatar', protect, upload.single('image'), uploadMyAvatar);
 router.get('/customer-care', protect, hasPermission(['manage_customers', 'manage_customer_care', 'manage_store_purchases']), searchCustomerCareUsers);

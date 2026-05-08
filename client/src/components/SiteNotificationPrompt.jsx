@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { BellRing, X } from 'lucide-react';
+import { ensurePushSubscription } from '../utils/pushNotifications.js';
 
 const DISMISS_KEY = 'site-notification-prompt-dismissed';
 
@@ -38,6 +39,15 @@ export default function SiteNotificationPrompt() {
       if (nextPermission === 'granted') {
         localStorage.removeItem(DISMISS_KEY);
         setIsHidden(true);
+        const result = await ensurePushSubscription().catch(() => ({ ok: false, reason: 'sync-failed' }));
+        if (result.ok) {
+          toast.success('تم تفعيل إشعارات المتصفح');
+          return;
+        }
+        if (result.reason === 'not-configured') {
+          toast('تم السماح بالإشعارات، وبقي تفعيل مفاتيح Push على السيرفر');
+          return;
+        }
         toast.success('تم تفعيل إشعارات المتصفح');
         return;
       }
