@@ -186,9 +186,16 @@ const policyDefinitions = [
 const orderStatuses = ['جديد', 'قيد التجهيز', 'في الطريق', 'تم التسليم', 'ملغي'];
 
 const normalizeText = (value) => String(value || '').toLowerCase();
+const normalizeOrderStatus = (value) => String(value || '').trim().toLowerCase();
 const generateProductBarcode = () => `PRD-${Date.now().toString(36).toUpperCase()}`;
-const isDeliveredOrder = (order) => order?.status === 'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…';
-const isCancelledOrder = (order) => order?.status === 'Ù…Ù„ØºÙŠ';
+const isDeliveredOrder = (order) => {
+  const status = normalizeOrderStatus(order?.status);
+  return status === 'تم التسليم' || status.includes('التسليم') || status === 'delivered';
+};
+const isCancelledOrder = (order) => {
+  const status = normalizeOrderStatus(order?.status);
+  return status === 'ملغي' || status.includes('ملغ') || status === 'cancelled' || status === 'canceled';
+};
 const isActiveOrder = (order) => !isDeliveredOrder(order) && !isCancelledOrder(order);
 const startOfDay = (value = new Date()) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
 const shiftDays = (value, days) => {
