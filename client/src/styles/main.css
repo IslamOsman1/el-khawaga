@@ -779,6 +779,12 @@ body[data-theme='light'] .admin-form textarea{background:#f7f0e4;color:#18130f;b
 .admin-table-card{display:grid;gap:14px}
 .admin-table-wrap{background:#171717}
 .admin-table-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.accounts-period-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.accounts-period-card{display:grid;gap:14px}
+.accounts-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.accounts-kpi-card{min-height:88px;padding:14px 16px;border-radius:18px;background:#111111;border:1px solid rgba(222,183,122,.12);display:grid;gap:8px}
+.accounts-kpi-card span{color:var(--muted);font-size:.88rem}
+.accounts-kpi-card strong{color:#fff;font-size:1.08rem}
 .table-action-btn{min-height:34px;padding:0 12px;border-radius:999px;background:#20170f;color:#e6c89b;border:1px solid rgba(222,183,122,.14);font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .table-action-btn.edit{background:#1c1814}
 .table-action-btn.danger{background:#2b1616;color:#ffd2d2;border-color:rgba(208,110,110,.16)}
@@ -868,6 +874,8 @@ body[data-theme='light'] .dashboard-tab-btn{background:#fffaf2;color:#7a6448;bor
 body[data-theme='light'] .admin-search-box{background:#fffaf2;border-color:rgba(184,137,78,.16);color:#8c6232}
 body[data-theme='light'] .admin-search-box input{color:#18130f}
 body[data-theme='light'] .admin-search-box input::placeholder{color:#7a6448}
+body[data-theme='light'] .accounts-kpi-card{background:#fffdf8;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .accounts-kpi-card strong{color:#18130f}
 body[data-theme='light'] .checkout-loyalty-box{background:#fffaf2;border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .checkout-saved-address-card{background:#fffdf9;border-color:rgba(184,137,78,.14);color:#18130f}
 body[data-theme='light'] .checkout-saved-address-head{color:#18130f}
@@ -915,6 +923,7 @@ body[data-theme='light'] .store-purchases-mobile-reset{background:#fffdf8;color:
 @media(max-width:1100px){
   .admin-dashboard-hero{grid-template-columns:1fr}
   .admin-dashboard-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .accounts-period-grid{grid-template-columns:1fr}
   .admin-slides-grid.enhanced{grid-template-columns:1fr 1fr}
 }
 @media(max-width:760px){
@@ -924,7 +933,8 @@ body[data-theme='light'] .store-purchases-mobile-reset{background:#fffdf8;color:
   .admin-dashboard-form-grid.two-cols,
   .admin-text-grid.enhanced,
   .admin-slides-grid.enhanced,
-  .admin-subsection-card{grid-template-columns:1fr}
+  .admin-subsection-card,
+  .accounts-kpi-grid{grid-template-columns:1fr}
   .admin-dashboard-panel{padding:16px;border-radius:22px}
   .admin-hero-copy{padding:20px;border-radius:22px}
   .admin-dashboard-tabs{display:grid;grid-template-columns:1fr 1fr}

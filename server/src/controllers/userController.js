@@ -120,7 +120,7 @@ const employeeHasAnyPermission = (reqUser, permissions = []) => (
 
 export const allUsers = asyncHandler(async (_req, res) => {
   const users = await User.find({})
-    .select('name email phone role permissions avatar walletBalance loyaltyPoints hasManualPassword createdAt googleId addresses customerCode privateDiscountCodes inStoreSpentTotal')
+    .select('name email phone role permissions avatar walletBalance loyaltyPoints hasManualPassword createdAt googleId addresses customerCode privateDiscountCodes inStoreSpentTotal customerCareHistory')
     .sort({ createdAt: -1 });
 
   await ensureUsersHaveCodes(users);

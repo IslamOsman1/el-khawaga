@@ -154,6 +154,7 @@ const dashboardSections = [
   { id: 'products', label: 'المنتجات', icon: Package },
   { id: 'customer-care', label: 'إرضاء العميل', icon: Gift },
   { id: 'store-purchases', label: 'تسجيل الشراء من المحل', icon: Store },
+  { id: 'accounts', label: 'الحسابات', icon: Wallet },
   { id: 'categories', label: 'الفئات والأقسام', icon: FolderTree },
   { id: 'store', label: 'إعدادات المتجر', icon: Store },
   { id: 'checkout', label: 'إعداد الطلب', icon: MapPin },
@@ -186,6 +187,16 @@ const orderStatuses = ['جديد', 'قيد التجهيز', 'في الطريق',
 
 const normalizeText = (value) => String(value || '').toLowerCase();
 const generateProductBarcode = () => `PRD-${Date.now().toString(36).toUpperCase()}`;
+const startOfDay = (value = new Date()) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
+const shiftDays = (value, days) => {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+const isOnOrAfter = (value, start) => {
+  const time = new Date(value || 0).getTime();
+  return Number.isFinite(time) && time >= start.getTime();
+};
 const customerCareTypeLabel = (value) => ({
   wallet_credit: 'إضافة للمحفظة',
   points_credit: 'إضافة نقاط',
@@ -323,6 +334,7 @@ export default function AdminDashboard() {
   const [qrScannerStatus, setQrScannerStatus] = useState('');
   const [searchTerms, setSearchTerms] = useState({
     products: '',
+    accounts: '',
     categories: '',
     store: '',
     content: '',
@@ -379,6 +391,138 @@ export default function AdminDashboard() {
     totalProducts: products.length,
     totalUsers: users.length
   }), [orders, products, users]);
+
+  const accountingData = useMemo(() => {
+    const todayStart = startOfDay();
+    const weeklyStart = shiftDays(todayStart, -6);
+    const monthlyStart = shiftDays(todayStart, -29);
+
+    const customerTransactions = users.flatMap((member) => (
+      Array.isArray(member.customerCareHistory)
+        ? member.customerCareHistory.map((entry, index) => ({
+          id: `${member._id}-care-${entry._id || index}`,
+          kind: entry.type || 'customer-care',
+          label: customerCareTypeLabel(entry.type),
+          customerName: member.name || '-',
+          customerCode: member.customerCode || '',
+          amount: Number(entry.amount || 0),
+          points: Number(entry.points || entry.amount || 0),
+          note: entry.note || '',
+          code: entry.code || '',
+          paymentLabel: '',
+          statusLabel: '',
+          createdAt: entry.createdAt || member.createdAt,
+          searchable: [
+            member.name,
+            member.email,
+            member.phone,
+            member.customerCode,
+            entry.type,
+            entry.note,
+            entry.code,
+            entry.amount,
+            entry.points
+          ].join(' ')
+        }))
+        : []
+    ));
+
+    const orderTransactions = orders.flatMap((order) => {
+      const baseEntry = {
+        id: `order-${order._id}`,
+        kind: 'order',
+        label: 'طلب موقع',
+        customerName: order.user?.name || '-',
+        customerCode: order.user?.customerCode || '',
+        amount: Number(order.totalPrice || 0),
+        points: Number(order.loyaltyPointsUsed || 0),
+        note: order.discountCode ? `كود خصم: ${order.discountCode}` : '',
+        code: order.discountCode || '',
+        paymentLabel: order.isPaid ? 'مدفوع' : (order.paymentMethod || ''),
+        statusLabel: order.status || '',
+        createdAt: order.createdAt,
+        searchable: [
+          order.user?.name,
+          order.user?.email,
+          order.user?.phone,
+          order.paymentMethod,
+          order.status,
+          order.totalPrice,
+          order.discountCode
+        ].join(' ')
+      };
+
+      const refundEntry = order.refundedToWallet && Number(order.refundedAmount || 0) > 0
+        ? {
+          id: `refund-${order._id}`,
+          kind: 'refund',
+          label: 'استرجاع للمحفظة',
+          customerName: order.user?.name || '-',
+          customerCode: order.user?.customerCode || '',
+          amount: Number(order.refundedAmount || 0),
+          points: 0,
+          note: 'استرجاع مبلغ طلب ملغي',
+          code: '',
+          paymentLabel: 'محفظة',
+          statusLabel: 'مرتجع',
+          createdAt: order.refundedAt || order.updatedAt || order.createdAt,
+          searchable: [
+            order.user?.name,
+            order.paymentMethod,
+            order.status,
+            order.refundedAmount,
+            'refund'
+          ].join(' ')
+        }
+        : null;
+
+      return refundEntry ? [baseEntry, refundEntry] : [baseEntry];
+    });
+
+    const transactions = [...orderTransactions, ...customerTransactions]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    const buildSummary = (start) => {
+      const ordersInRange = orders.filter((order) => isOnOrAfter(order.createdAt, start));
+      const validOrders = ordersInRange.filter((order) => order.status !== 'ملغي');
+      const careInRange = customerTransactions.filter((entry) => isOnOrAfter(entry.createdAt, start));
+      const refundsInRange = transactions.filter((entry) => entry.kind === 'refund' && isOnOrAfter(entry.createdAt, start));
+
+      return {
+        ordersRevenue: validOrders.reduce((sum, order) => sum + Number(order.totalPrice || 0), 0),
+        onlineRevenue: validOrders
+          .filter((order) => order.paymentMethod === 'دفع أونلاين')
+          .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0),
+        storePurchases: careInRange
+          .filter((entry) => entry.kind === 'store_purchase')
+          .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+        walletCredits: careInRange
+          .filter((entry) => entry.kind === 'wallet_credit')
+          .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+        pointsCredits: careInRange
+          .filter((entry) => entry.kind === 'points_credit')
+          .reduce((sum, entry) => sum + Number(entry.points || 0), 0),
+        discountsIssued: careInRange.filter((entry) => entry.kind === 'discount_code').length,
+        refundsAmount: refundsInRange.reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+        ordersCount: validOrders.length,
+        transactionsCount: transactions.filter((entry) => isOnOrAfter(entry.createdAt, start)).length
+      };
+    };
+
+    return {
+      summaries: [
+        { key: 'daily', label: 'يومي', note: 'من بداية اليوم', values: buildSummary(todayStart) },
+        { key: 'weekly', label: 'أسبوعي', note: 'آخر 7 أيام', values: buildSummary(weeklyStart) },
+        { key: 'monthly', label: 'شهري', note: 'آخر 30 يومًا', values: buildSummary(monthlyStart) }
+      ],
+      transactions
+    };
+  }, [orders, users]);
+
+  const filteredAccountingTransactions = useMemo(() => {
+    const term = normalizeText(searchTerms.accounts);
+    return accountingData.transactions.filter((entry) => !term || normalizeText(entry.searchable).includes(term));
+  }, [accountingData.transactions, searchTerms.accounts]);
 
   const filteredProducts = useMemo(() => {
     const term = normalizeText(searchTerms.products);
@@ -2217,6 +2361,68 @@ export default function AdminDashboard() {
               </article>
             </div>
           </form>
+        </section>
+
+        <section className={`admin-dashboard-panel${activeSection === 'accounts' ? ' active' : ''}`}>
+          <div className="admin-section-head">
+            <div>
+              <h2>قسم الحسابات</h2>
+              <p>تابع معاملات اليوم والأسبوع والشهر من الطلبات وشراء المحل والمحفظة والنقاط والمرتجعات.</p>
+            </div>
+            <Wallet size={18} />
+          </div>
+          <SearchBox value={searchTerms.accounts} onChange={(event) => changeSearch('accounts', event.target.value)} placeholder="ابحث في المعاملات بالعميل أو النوع أو الملاحظة أو الكود..." />
+
+          <div className="accounts-period-grid">
+            {accountingData.summaries.map((period) => (
+              <article key={period.key} className="admin-setting-card accounts-period-card">
+                <div className="admin-setting-card-head">
+                  <Wallet size={18} />
+                  <strong>{period.label}</strong>
+                </div>
+                <p className="muted">{period.note}</p>
+                <div className="accounts-kpi-grid">
+                  <div className="accounts-kpi-card"><span>إيراد الطلبات</span><strong>{period.values.ordersRevenue.toFixed(2)} ج.م</strong></div>
+                  <div className="accounts-kpi-card"><span>الدفع الأونلاين</span><strong>{period.values.onlineRevenue.toFixed(2)} ج.م</strong></div>
+                  <div className="accounts-kpi-card"><span>شراء المحل</span><strong>{period.values.storePurchases.toFixed(2)} ج.م</strong></div>
+                  <div className="accounts-kpi-card"><span>إضافات المحفظة</span><strong>{period.values.walletCredits.toFixed(2)} ج.م</strong></div>
+                  <div className="accounts-kpi-card"><span>المرتجعات</span><strong>{period.values.refundsAmount.toFixed(2)} ج.م</strong></div>
+                  <div className="accounts-kpi-card"><span>النقاط المضافة</span><strong>{period.values.pointsCredits} نقطة</strong></div>
+                  <div className="accounts-kpi-card"><span>أكواد الخصم</span><strong>{period.values.discountsIssued}</strong></div>
+                  <div className="accounts-kpi-card"><span>عدد المعاملات</span><strong>{period.values.transactionsCount}</strong></div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="admin-table-card">
+            <div className="table-wrap admin-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>النوع</th>
+                    <th>العميل</th>
+                    <th>القيمة</th>
+                    <th>التفاصيل</th>
+                    <th>ملاحظات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAccountingTransactions.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{new Date(entry.createdAt).toLocaleString('ar-EG')}</td>
+                      <td>{entry.label}</td>
+                      <td>{entry.customerName || '-'}</td>
+                      <td>{entry.amount ? `${Number(entry.amount || 0).toFixed(2)} ج.م` : `${Number(entry.points || 0)} نقطة`}</td>
+                      <td>{[entry.paymentLabel, entry.statusLabel, entry.code].filter(Boolean).join(' • ') || '-'}</td>
+                      <td>{entry.note || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <section className={`admin-dashboard-panel${activeSection === 'orders' ? ' active' : ''}`}>
