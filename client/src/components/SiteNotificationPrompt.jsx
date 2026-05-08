@@ -9,6 +9,7 @@ export default function SiteNotificationPrompt() {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState('default');
   const [isHidden, setIsHidden] = useState(true);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -26,11 +27,15 @@ export default function SiteNotificationPrompt() {
     setIsHidden(true);
   };
 
-  const requestPermission = async () => {
-    if (!isSupported) {
-      toast.error('إشعارات المتصفح غير مدعومة على هذا الجهاز');
+  const requestPermission = async ({ silent = false } = {}) => {
+    if (!isSupported || requesting) {
+      if (!silent && !isSupported) {
+        toast.error('إشعارات المتصفح غير مدعومة على هذا الجهاز');
+      }
       return;
     }
+
+    setRequesting(true);
 
     try {
       const nextPermission = await window.Notification.requestPermission();
@@ -39,15 +44,19 @@ export default function SiteNotificationPrompt() {
       if (nextPermission === 'granted') {
         localStorage.removeItem(DISMISS_KEY);
         setIsHidden(true);
+
         const result = await ensurePushSubscription().catch(() => ({ ok: false, reason: 'sync-failed' }));
+
         if (result.ok) {
           toast.success('تم تفعيل إشعارات المتصفح');
           return;
         }
+
         if (result.reason === 'not-configured') {
           toast('تم السماح بالإشعارات، وبقي تفعيل مفاتيح Push على السيرفر');
           return;
         }
+
         toast.success('تم تفعيل إشعارات المتصفح');
         return;
       }
@@ -55,15 +64,41 @@ export default function SiteNotificationPrompt() {
       if (nextPermission === 'denied') {
         localStorage.setItem(DISMISS_KEY, '1');
         setIsHidden(true);
-        toast('يمكنك تفعيل الإشعارات لاحقًا من إعدادات المتصفح');
+        if (!silent) {
+          toast('يمكنك تفعيل الإشعارات لاحقًا من إعدادات المتصفح');
+        }
         return;
       }
 
-      toast('لم يتم تفعيل الإشعارات بعد');
+      if (!silent) {
+        toast('لم يتم تفعيل الإشعارات بعد');
+      }
     } catch {
-      toast.error('تعذر طلب إذن الإشعارات');
+      if (!silent) {
+        toast.error('تعذر طلب إذن الإشعارات');
+      }
+    } finally {
+      setRequesting(false);
     }
   };
+
+  useEffect(() => {
+    if (!isSupported || isHidden || permission !== 'default') return undefined;
+
+    const handleFirstInteraction = () => {
+      requestPermission({ silent: true }).catch(() => undefined);
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, [isSupported, isHidden, permission]);
 
   if (!isSupported || isHidden || permission !== 'default') {
     return null;
@@ -84,8 +119,8 @@ export default function SiteNotificationPrompt() {
           </div>
 
           <div className="site-notification-actions">
-            <button type="button" className="primary-btn site-notification-enable" onClick={requestPermission}>
-              السماح بالإشعارات
+            <button type="button" className="primary-btn site-notification-enable" onClick={() => requestPermission()}>
+              {requesting ? 'جارٍ الطلب...' : 'السماح بالإشعارات'}
             </button>
             <button
               type="button"
