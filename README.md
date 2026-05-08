@@ -185,6 +185,12 @@ Important Render backend values:
 - `FACEBOOK_APP_ID=...`
 - `FACEBOOK_APP_SECRET=...`
 - `STRIPE_SECRET_KEY=...`
+- `SMTP_HOST=...`
+- `SMTP_PORT=587`
+- `SMTP_SECURE=false`
+- `SMTP_USER=...`
+- `SMTP_PASS=...`
+- `EMAIL_FROM=Al Wekala <your-email@example.com>`
 
 Health check path:
 
@@ -212,6 +218,12 @@ Before the first production deploy, fill in the prompted environment variables i
   - `FACEBOOK_APP_ID`
   - `FACEBOOK_APP_SECRET`
   - `STRIPE_SECRET_KEY`
+  - `SMTP_HOST`
+  - `SMTP_PORT`
+  - `SMTP_SECURE`
+  - `SMTP_USER`
+  - `SMTP_PASS`
+  - `EMAIL_FROM`
 - Frontend:
   - `VITE_API_URL`
   - `VITE_STRIPE_PUBLISHABLE_KEY`
@@ -224,6 +236,7 @@ Before the first production deploy, fill in the prompted environment variables i
 - Set `VITE_API_URL` to the real backend API URL
 - Configure Cloudinary production credentials
 - Configure Stripe production keys
+- Configure SMTP credentials for forgot-password emails
 - Add your production domain in Google app settings
 - Do not commit real `.env` files
 
