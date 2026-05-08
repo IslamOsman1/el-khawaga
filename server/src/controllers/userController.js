@@ -2,6 +2,8 @@ import asyncHandler from 'express-async-handler';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import { buildCustomerQrValue, ensureCustomerCode } from '../utils/customerIdentity.js';
+import { calculateEarnedLoyaltyPoints } from '../utils/pricing.js';
+import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { getPushPublicKey, isPushConfigured, normalizePushSubscription } from '../utils/pushNotifications.js';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
@@ -280,7 +282,8 @@ export const applyCustomerCareAction = asyncHandler(async (req, res) => {
 
   if (actionType === 'store_purchase') {
     const amount = Math.max(0, Number(req.body.amount || 0));
-    const awardedPoints = Math.max(0, Math.floor(amount));
+    const settings = await ensureStoreSettings();
+    const awardedPoints = calculateEarnedLoyaltyPoints(settings, amount);
 
     if (!amount) {
       return res.status(400).json({ message: 'أدخل مبلغ شراء صحيح' });
