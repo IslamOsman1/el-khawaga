@@ -32,7 +32,7 @@ export const getProducts = asyncHandler(async (req, res) => {
 });
 
 export const getProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await Product.findById(req.params.id).populate('reviews.user', 'name avatar');
   if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
   res.json(product);
 });
@@ -91,4 +91,52 @@ export const deleteProduct = asyncHandler(async (req, res) => {
 
   await product.deleteOne();
   res.json({ message: 'تم حذف المنتج' });
+});
+
+export const createProductReview = asyncHandler(async (req, res) => {
+  const { rating, comment } = req.body;
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return res.status(404).json({ message: 'المنتج غير موجود' });
+  }
+
+  const normalizedComment = String(comment || '').trim();
+  const numericRating = Number(rating || 0);
+
+  if (!normalizedComment) {
+    return res.status(400).json({ message: 'أضف تعليقًا قبل الإرسال' });
+  }
+
+  if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ message: 'اختر تقييمًا من 1 إلى 5' });
+  }
+
+  const existingReview = product.reviews.find((entry) => entry.user?.toString() === req.user._id.toString());
+
+  if (existingReview) {
+    existingReview.rating = numericRating;
+    existingReview.comment = normalizedComment;
+    existingReview.name = req.user.name || existingReview.name;
+  } else {
+    product.reviews.unshift({
+      user: req.user._id,
+      name: req.user.name || 'مستخدم',
+      rating: numericRating,
+      comment: normalizedComment
+    });
+  }
+
+  product.numReviews = product.reviews.length;
+  product.rating = product.numReviews
+    ? Number((product.reviews.reduce((sum, entry) => sum + Number(entry.rating || 0), 0) / product.numReviews).toFixed(1))
+    : 0;
+
+  await product.save();
+  await product.populate('reviews.user', 'name avatar');
+
+  res.status(201).json({
+    message: existingReview ? 'تم تحديث تقييمك' : 'تم إرسال تقييمك بنجاح',
+    product
+  });
 });

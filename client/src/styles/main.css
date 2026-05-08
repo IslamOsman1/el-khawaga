@@ -567,6 +567,27 @@ body[data-theme='light'] .footer-social-link:hover{color:#18130f;border-color:rg
 .order-meta-box{background:#fff7ea;border:1px solid #efd8af;border-radius:18px;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:flex-start}
 .order-meta-box span{display:block;color:#8a7151;font-size:.84rem}
 .order-meta-box strong{display:block;color:#17120d;margin-top:4px}
+.product-rating-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 14px}
+.product-rating-summary strong{font-size:1.02rem;color:#fff}
+.product-rating-summary span{color:var(--muted)}
+.product-stars{display:flex;align-items:center;gap:4px;color:rgba(222,183,122,.26)}
+.product-stars.small{gap:3px}
+.product-stars .filled{fill:currentColor;color:var(--gold)}
+.product-reviews-panel{display:grid;gap:18px;margin-top:28px;padding-top:24px;border-top:1px solid rgba(222,183,122,.14)}
+.product-review-form{display:grid;gap:14px;padding:18px;border-radius:24px;background:#171717;border:1px solid rgba(222,183,122,.12)}
+.product-review-form textarea{width:100%;min-height:120px;background:#181818;color:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;resize:vertical}
+.product-review-rating{display:grid;gap:10px}
+.product-review-rating span{font-weight:800;color:#fff}
+.product-review-stars-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.product-review-stars-picker button{width:42px;height:42px;border-radius:14px;border:1px solid rgba(222,183,122,.14);background:#111111;color:rgba(222,183,122,.3);display:grid;place-items:center}
+.product-review-stars-picker button.active{color:var(--gold);background:#21180f;border-color:rgba(222,183,122,.26)}
+.product-review-stars-picker button.active svg{fill:currentColor}
+.product-reviews-list{display:grid;gap:14px}
+.product-review-card,.product-reviews-empty{padding:18px;border-radius:22px;background:#171717;border:1px solid rgba(222,183,122,.12)}
+.product-review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.product-review-head strong{display:block;color:#fff}
+.product-review-head span{display:block;color:var(--muted);margin-top:4px}
+.product-review-card p,.product-reviews-empty{margin:0;color:#e7d5ba;line-height:1.85}
 body[data-theme='light'] .account-hero{background:linear-gradient(135deg,#fffaf1,#f4e8d4 52%,#edd4a7 100%);border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .account-copy h1{color:#18130f}
 body[data-theme='light'] .account-copy p{color:#5b4833}
@@ -601,6 +622,19 @@ body[data-theme='light'] .settings-avatar-copy span{color:#7a6448}
 body[data-theme='light'] .order-status-pill,
 body[data-theme='light'] .order-meta-box,
 body[data-theme='light'] .account-info-icon{background:#f8efdf;border-color:#ecd5af}
+body[data-theme='light'] .product-rating-summary strong,
+body[data-theme='light'] .product-review-rating span,
+body[data-theme='light'] .product-review-head strong{color:#18130f}
+body[data-theme='light'] .product-review-form,
+body[data-theme='light'] .product-review-card,
+body[data-theme='light'] .product-reviews-empty{background:#fffaf2;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .product-review-form textarea{background:#f7f0e4;color:#18130f}
+body[data-theme='light'] .product-review-stars-picker button{background:#fffdf8;border-color:rgba(184,137,78,.16)}
+body[data-theme='light'] .product-review-stars-picker button.active{background:#f8efdf;border-color:rgba(184,137,78,.24)}
+body[data-theme='light'] .product-review-head span,
+body[data-theme='light'] .product-review-card p,
+body[data-theme='light'] .product-reviews-empty,
+body[data-theme='light'] .product-rating-summary span{color:#7a6448}
 body[data-theme='light'] .profile-qr-head strong,
 body[data-theme='light'] .profile-customer-code strong,
 body[data-theme='light'] .profile-private-code-item strong{color:#18130f}
@@ -1093,6 +1127,7 @@ body[data-theme='light'] .product-detail-qr-copy strong{color:#18130f}
   .admin-product-qr-preview{display:grid;justify-items:center;text-align:center}
   .product-qr-modal-actions{grid-template-columns:1fr}
   .product-detail-qr-card{display:grid;justify-items:center;text-align:center}
+  .product-review-head{display:grid}
   .support-chat-widget{left:14px;bottom:96px}
   .support-chat-panel{width:min(340px,calc(100vw - 20px))}
   .support-chat-toolbar,
