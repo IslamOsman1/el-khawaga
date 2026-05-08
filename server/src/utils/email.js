@@ -43,6 +43,18 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       html
     });
   } catch (error) {
+    console.error('SMTP send failed', {
+      message: error?.message,
+      code: error?.code,
+      command: error?.command,
+      response: error?.response,
+      responseCode: error?.responseCode,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.user
+    });
+
     const emailError = new Error('تعذر إرسال البريد الإلكتروني. تحقق من إعدادات SMTP على Render أو من مزود البريد.');
     emailError.statusCode = 502;
     emailError.cause = error;
