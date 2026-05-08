@@ -668,6 +668,9 @@ body[data-theme='light'] .settings-address-empty{background:#fff8ec;border-color
 .auth-divider::before{content:'';position:absolute;right:0;left:0;height:1px;background:rgba(222,183,122,.12)}
 .auth-divider span{position:relative;padding:0 12px;background:#111111}
 .social-login-stack{display:grid;gap:10px}
+.google-signin-host{display:grid;justify-content:center;min-height:44px}
+.google-signin-host > div{margin-inline:auto}
+.social-fallback-btn{width:100%}
 .icons-only-social-login{display:flex;align-items:center;justify-content:center;gap:12px}
 .social-icon-btn{width:52px;height:52px;border-radius:50%;border:1px solid rgba(222,183,122,.16);display:grid;place-items:center;color:#ffffff;box-shadow:0 10px 22px rgba(43,31,16,.12);transition:.2s}
 .social-icon-btn:hover{transform:translateY(-2px)}
