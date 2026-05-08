@@ -353,6 +353,7 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const { refresh } = useStoreSettings();
   const isEmployee = user?.role === 'employee';
+  const canManageOrders = user?.role === 'admin' || user?.permissions?.includes('manage_orders');
   const canManageSupport = user?.role === 'admin' || user?.permissions?.includes('manage_support');
   const canManageCustomerCare = user?.role === 'admin' || user?.permissions?.includes('manage_customers') || user?.permissions?.includes('manage_customer_care');
   const canManageStorePurchases = user?.role === 'admin' || user?.permissions?.includes('manage_customers') || user?.permissions?.includes('manage_store_purchases');
@@ -361,6 +362,8 @@ export default function AdminDashboard() {
   const qrVideoRef = React.useRef(null);
   const qrReaderRef = React.useRef(null);
   const qrControlsRef = React.useRef(null);
+  const knownOrderIdsRef = React.useRef(new Set());
+  const ordersBootstrappedRef = React.useRef(false);
 
   const visibleDashboardSections = useMemo(
     () => isEmployee
@@ -697,6 +700,23 @@ export default function AdminDashboard() {
     [supportConversations]
   );
 
+  const showBrowserNotification = (title, body) => {
+    if (typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') {
+      return;
+    }
+
+    try {
+      const notification = new window.Notification(title, { body });
+      notification.onclick = () => {
+        window.focus();
+        setActiveSection('orders');
+        notification.close();
+      };
+    } catch {
+      // The toast remains enough if the browser blocks the native notification.
+    }
+  };
+
   const selectedCustomer = useMemo(
     () => customerResults.find((entry) => entry._id === selectedCustomerId) || null,
     [customerResults, selectedCustomerId]
@@ -753,9 +773,42 @@ export default function AdminDashboard() {
     setSupportConversations(supportResponse?.data || []);
   };
 
+  const loadOrdersOnly = async () => {
+    const { data } = await api.get('/orders');
+    setOrders(data || []);
+    return data || [];
+  };
+
   useEffect(() => {
     load().catch(() => toast.error('تعذر تحميل لوحة التحكم'));
   }, [isEmployee, canManageSupport]);
+
+  useEffect(() => {
+    const currentIds = new Set(orders.map((order) => String(order._id)));
+
+    if (!ordersBootstrappedRef.current) {
+      knownOrderIdsRef.current = currentIds;
+      ordersBootstrappedRef.current = true;
+      return;
+    }
+
+    const newOrders = orders.filter((order) => (
+      isActiveOrder(order) && !knownOrderIdsRef.current.has(String(order._id))
+    ));
+
+    if (newOrders.length) {
+      const latestOrder = newOrders[0];
+      const customerName = latestOrder?.user?.name || 'عميل جديد';
+      const notificationBody = newOrders.length === 1
+        ? `وصلك طلب جديد من ${customerName}`
+        : `وصلك ${newOrders.length} طلبات جديدة`;
+
+      toast.success(notificationBody);
+      showBrowserNotification('طلب جديد في المتجر', notificationBody);
+    }
+
+    knownOrderIdsRef.current = currentIds;
+  }, [orders]);
 
   useEffect(() => () => {
     qrControlsRef.current?.stop?.();
@@ -804,6 +857,14 @@ export default function AdminDashboard() {
     }, 8000);
     return () => window.clearInterval(timer);
   }, [activeSection, canManageSupport]);
+
+  useEffect(() => {
+    if (!canManageOrders) return undefined;
+    const timer = window.setInterval(() => {
+      loadOrdersOnly().catch(() => undefined);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [canManageOrders]);
 
   useEffect(() => {
     if (!['customer-care', 'store-purchases'].includes(activeSection) || !canSearchCustomerAccounts) return undefined;
