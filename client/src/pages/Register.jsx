@@ -3,10 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import SocialLoginButtons from '../components/SocialLoginButtons.jsx';
 import PasswordField from '../components/PasswordField.jsx';
+import PhoneInputField from '../components/PhoneInputField.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { composePhoneNumber, phoneFormatHelpText } from '../utils/phone.js';
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [countryCode, setCountryCode] = useState('+20');
+  const [localPhone, setLocalPhone] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -19,7 +23,10 @@ export default function Register() {
     event.preventDefault();
 
     try {
-      await register(form);
+      await register({
+        ...form,
+        phone: composePhoneNumber(countryCode, localPhone)
+      });
       navigate('/');
     } catch (error) {
       toast.error(error.response?.data?.message || 'فشل إنشاء الحساب');
@@ -33,7 +40,14 @@ export default function Register() {
       <form onSubmit={submit}>
         <input name="name" type="text" placeholder="الاسم" value={form.name} onChange={change} />
         <input name="email" type="email" placeholder="البريد الإلكتروني" value={form.email} onChange={change} />
-        <input name="phone" type="text" placeholder="رقم الهاتف" value={form.phone} onChange={change} />
+        <PhoneInputField
+          countryCode={countryCode}
+          localNumber={localPhone}
+          onCountryCodeChange={setCountryCode}
+          onLocalNumberChange={setLocalPhone}
+          placeholder="رقم الهاتف"
+        />
+        <small className="muted">{phoneFormatHelpText}</small>
         <PasswordField
           name="password"
           value={form.password}

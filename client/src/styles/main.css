@@ -785,6 +785,7 @@ body[data-theme='light'] .admin-form textarea{background:#f7f0e4;color:#18130f;b
   .admin-settings-grid,
   .admin-text-grid,
   .admin-slides-grid{grid-template-columns:1fr}
+  .phone-input-field{grid-template-columns:1fr}
 }
 @media(max-width:640px){
   .checkout-panel,.checkout-success-card{padding:14px;border-radius:18px}
@@ -899,6 +900,12 @@ body[data-theme='light'] .admin-form textarea{background:#f7f0e4;color:#18130f;b
 .admin-slide-card.refined{background:#111111;border:1px solid rgba(222,183,122,.12);padding:16px}
 .admin-field{display:grid;gap:8px}
 .admin-field-label{font-size:.86rem;color:var(--muted);font-weight:800}
+.phone-input-field{display:flex;align-items:stretch;gap:10px;direction:ltr;width:100%}
+.phone-input-field select,
+.phone-input-field input{width:100%;background:#181818;color:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem}
+.phone-input-field select{width:50px;min-width:50px;flex:0 0 50px;padding:.85rem 20px .85rem 6px;font-size:.9rem}
+.phone-input-field input{flex:1 1 auto;min-width:0}
+.phone-input-field input{text-align:left}
 .admin-banner-upload{justify-content:center}
 .admin-category-groups-stack{display:grid;gap:16px}
 .admin-category-inventory{display:grid;gap:14px;padding:16px 18px;border-radius:20px;background:#121212;border:1px solid rgba(222,183,122,.12)}
@@ -936,6 +943,8 @@ body[data-theme='light'] .checkout-saved-address-card.active{background:linear-g
 body[data-theme='light'] .admin-section-head h2,
 body[data-theme='light'] .admin-section-head h3{color:#18130f}
 body[data-theme='light'] .admin-field-label{color:#7a6448}
+body[data-theme='light'] .phone-input-field select,
+body[data-theme='light'] .phone-input-field input{background:#f7f0e4;color:#18130f}
 body[data-theme='light'] .admin-toggle-pill,
 body[data-theme='light'] .admin-file-pill{background:#f7f0e4;color:#5b4833;border-color:rgba(184,137,78,.16)}
 body[data-theme='light'] .admin-category-inventory{background:#fffdf8;border-color:rgba(184,137,78,.16)}

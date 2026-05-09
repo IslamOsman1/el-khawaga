@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapPin, Pencil, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PasswordField from '../components/PasswordField.jsx';
+import PhoneInputField from '../components/PhoneInputField.jsx';
 import api from '../api/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useStoreSettings } from '../context/StoreSettingsContext.jsx';
+import { composePhoneNumber, phoneFormatHelpText, splitPhoneNumber } from '../utils/phone.js';
 
 const avatarViewportSize = 320;
 
@@ -60,11 +62,12 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
     avatar: '',
     addresses: []
   });
+  const [countryCode, setCountryCode] = useState('+20');
+  const [localPhone, setLocalPhone] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -88,14 +91,16 @@ export default function SettingsPage() {
   useEffect(() => {
     api.get('/users/me')
       .then(({ data }) => {
+        const parsedPhone = splitPhoneNumber(data.phone || '');
         setForm({
           name: data.name || '',
           email: data.email || '',
-          phone: data.phone || '',
           password: '',
           avatar: data.avatar || '',
           addresses: data.addresses?.length ? data.addresses.map(normalizeAddress) : []
         });
+        setCountryCode(parsedPhone.countryCode);
+        setLocalPhone(parsedPhone.localNumber);
       })
       .catch(() => toast.error('تعذر تحميل إعدادات الملف الشخصي'))
       .finally(() => setLoading(false));
@@ -367,7 +372,7 @@ export default function SettingsPage() {
       await api.put('/users/me', {
         name: form.name,
         email: form.email,
-        phone: form.phone,
+        phone: composePhoneNumber(countryCode, localPhone),
         password: form.password,
         addresses: form.addresses.map((item) => ({
           label: item.label,
@@ -495,7 +500,15 @@ export default function SettingsPage() {
               </div>
               <div className="admin-field">
                 <label className="admin-field-label">رقم الهاتف</label>
-                <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
+                <PhoneInputField
+                  countryCode={countryCode}
+                  localNumber={localPhone}
+                  onCountryCodeChange={setCountryCode}
+                  onLocalNumberChange={setLocalPhone}
+                  label=""
+                  placeholder="رقم الهاتف"
+                />
+                <small className="muted">{phoneFormatHelpText}</small>
               </div>
               <div className="admin-field">
                 <label className="admin-field-label">كلمة المرور الجديدة</label>
