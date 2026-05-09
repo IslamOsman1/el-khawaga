@@ -5,6 +5,7 @@ import {
   Award,
   ClipboardList,
   Heart,
+  LogOut,
   Mail,
   Phone,
   QrCode,
@@ -17,7 +18,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [qrImage, setQrImage] = useState('');
 
   const displayName = user?.name || 'مستخدم الوكالة';
@@ -59,6 +60,10 @@ export default function ProfilePage() {
         <div className="account-hero-actions">
           <Link to="/orders" className="secondary-btn">طلباتي</Link>
           <Link to="/wishlist" className="primary-btn">المفضلة</Link>
+          <button type="button" className="secondary-btn profile-logout-btn" onClick={logout}>
+            <LogOut size={16} />
+            <span>تسجيل الخروج</span>
+          </button>
         </div>
       </section>
 
@@ -188,6 +193,13 @@ export default function ProfilePage() {
                 <span>اكمل المنتجات الجاهزة للشراء</span>
               </div>
             </Link>
+            <button type="button" className="quick-link-item quick-link-button" onClick={logout}>
+              <LogOut size={18} />
+              <div>
+                <strong>تسجيل الخروج</strong>
+                <span>إنهاء الجلسة الحالية من الحساب</span>
+              </div>
+            </button>
           </div>
         </aside>
       </section>

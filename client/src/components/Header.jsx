@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { BrowserQRCodeReader } from '@zxing/browser';
-import { Camera, LayoutDashboard, LogOut, Moon, Search, ShoppingCart, Sun, UserRound, X } from 'lucide-react';
+import { Camera, LayoutDashboard, Moon, Search, ShoppingCart, Sun, UserRound, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from './Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 
 export default function Header({ theme, onToggleTheme }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { totals } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -182,11 +182,7 @@ export default function Header({ theme, onToggleTheme }) {
                 </NavLink>
               )}
 
-              {user ? (
-                <button className="round-action" onClick={logout} title="تسجيل الخروج" aria-label="تسجيل الخروج">
-                  <LogOut size={22} />
-                </button>
-              ) : (
+              {user ? null : (
                 <NavLink to="/login" className="round-action user-action" title="تسجيل الدخول" aria-label="تسجيل الدخول">
                   <UserRound size={22} />
                 </NavLink>
