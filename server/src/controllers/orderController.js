@@ -3,6 +3,7 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
 import { sendPushToUsers } from '../utils/pushNotifications.js';
+import { sendNewOrderWhatsAppNotification } from '../utils/whatsapp.js';
 import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { calculateEarnedLoyaltyPoints, calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
@@ -189,6 +190,16 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   await notifyOrderManagers(order, req.user);
+  await sendNewOrderWhatsAppNotification({
+    order,
+    customer: req.user,
+    shippingAddress
+  }).catch((error) => {
+    console.error('WhatsApp notification error', {
+      orderId: String(order._id || ''),
+      message: error.message
+    });
+  });
 
   res.status(201).json(order);
 });

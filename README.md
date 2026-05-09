@@ -124,6 +124,9 @@ Important values:
 - `VAPID_PUBLIC_KEY`
 - `VAPID_PRIVATE_KEY`
 - `VAPID_SUBJECT`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_API_VERSION`
 
 ### Client
 
@@ -197,6 +200,9 @@ Important Render backend values:
 - `VAPID_PUBLIC_KEY=...`
 - `VAPID_PRIVATE_KEY=...`
 - `VAPID_SUBJECT=mailto:your-email@example.com`
+- `WHATSAPP_ACCESS_TOKEN=...`
+- `WHATSAPP_PHONE_NUMBER_ID=...`
+- `WHATSAPP_API_VERSION=v20.0`
 
 Health check path:
 
@@ -233,6 +239,9 @@ Before the first production deploy, fill in the prompted environment variables i
   - `VAPID_PUBLIC_KEY`
   - `VAPID_PRIVATE_KEY`
   - `VAPID_SUBJECT`
+  - `WHATSAPP_ACCESS_TOKEN`
+  - `WHATSAPP_PHONE_NUMBER_ID`
+  - `WHATSAPP_API_VERSION`
 - Frontend:
   - `VITE_API_URL`
   - `VITE_STRIPE_PUBLISHABLE_KEY`
@@ -247,6 +256,7 @@ Before the first production deploy, fill in the prompted environment variables i
 - Configure Stripe production keys
 - Configure SMTP credentials for forgot-password emails
 - Configure VAPID keys for browser push notifications
+- Configure Meta WhatsApp Cloud API if you want automatic WhatsApp order alerts
 - Add your production domain in Google app settings
 - Do not commit real `.env` files
 
@@ -280,6 +290,29 @@ Generate VAPID keys from the `server` folder:
 ```bash
 npx web-push generate-vapid-keys
 ```
+
+## WhatsApp Order Alerts
+
+The backend can now send a WhatsApp message automatically when a new order is created.
+
+Recipients:
+
+- Admin accounts
+- Employee accounts that have the `manage_orders` permission
+
+Requirements:
+
+- A configured Meta WhatsApp Cloud API number
+- These backend environment variables:
+  - `WHATSAPP_ACCESS_TOKEN`
+  - `WHATSAPP_PHONE_NUMBER_ID`
+  - `WHATSAPP_API_VERSION`
+
+Notes:
+
+- The message is sent to the phone numbers saved in the user accounts of the admin and order employees.
+- Egyptian local numbers like `010...` are normalized automatically to international format.
+- If WhatsApp sending fails, the order is still created normally and the error is only logged on the server.
 
 ## Useful Commands
 
