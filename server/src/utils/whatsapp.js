@@ -1,64 +1,54 @@
+import twilio from 'twilio';
 import User from '../models/User.js';
 
-const WHATSAPP_ACCESS_TOKEN = String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim();
-const WHATSAPP_PHONE_NUMBER_ID = String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim();
-const WHATSAPP_API_VERSION = String(process.env.WHATSAPP_API_VERSION || 'v20.0').trim();
+const TWILIO_ACCOUNT_SID = String(process.env.TWILIO_ACCOUNT_SID || '').trim();
+const TWILIO_AUTH_TOKEN = String(process.env.TWILIO_AUTH_TOKEN || '').trim();
+const TWILIO_WHATSAPP_FROM = String(process.env.TWILIO_WHATSAPP_FROM || '').trim();
 
-export const isWhatsAppConfigured = () => Boolean(WHATSAPP_ACCESS_TOKEN && WHATSAPP_PHONE_NUMBER_ID);
+const twilioClient = TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN
+  ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+  : null;
+
+export const isWhatsAppConfigured = () => Boolean(twilioClient && TWILIO_WHATSAPP_FROM);
 
 const normalizeWhatsAppPhone = (phone = '') => {
   const cleaned = String(phone || '').trim().replace(/[^\d+]/g, '');
   if (!cleaned) return '';
 
   if (/^01\d{9}$/.test(cleaned)) {
-    return `20${cleaned}`;
-  }
-
-  if (/^\+20(1\d{9})$/.test(cleaned)) {
-    return cleaned.replace('+', '');
+    return `+20${cleaned}`;
   }
 
   if (/^20(1\d{9})$/.test(cleaned)) {
-    return cleaned;
+    return `+${cleaned}`;
   }
 
   if (/^0020(1\d{9})$/.test(cleaned)) {
-    return cleaned.slice(2);
+    return `+${cleaned.slice(2)}`;
   }
 
   if (/^\+\d{8,15}$/.test(cleaned)) {
-    return cleaned.replace('+', '');
+    return cleaned;
   }
 
   if (/^\d{8,15}$/.test(cleaned)) {
-    return cleaned;
+    return `+${cleaned}`;
   }
 
   return '';
 };
 
 const sendWhatsAppText = async ({ to, body }) => {
-  const response = await fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'text',
-      text: {
-        preview_url: false,
-        body
-      }
-    })
-  });
+  const from = TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
+    ? TWILIO_WHATSAPP_FROM
+    : `whatsapp:${TWILIO_WHATSAPP_FROM}`;
+  const recipient = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`WhatsApp send failed: ${response.status} ${errorText}`);
-  }
+  await twilioClient.messages.create({
+    body,
+    from,
+    to: recipient
+  });
 };
 
 const collectOrderManagers = async () => {
@@ -67,7 +57,7 @@ const collectOrderManagers = async () => {
       { role: 'admin' },
       { role: 'employee', permissions: 'manage_orders' }
     ]
-  }).select('name phone role permissions');
+  }).select('name phone');
 
   const uniqueRecipients = new Map();
 
@@ -88,7 +78,7 @@ const collectOrderManagers = async () => {
 const formatOrderItems = (items = []) => (
   items
     .slice(0, 8)
-    .map((item) => `- ${item.name} × ${item.qty}`)
+    .map((item) => `- ${item.name} x ${item.qty}`)
     .join('\n')
 );
 
@@ -104,7 +94,7 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
     `رقم الطلب: ${order._id}`,
     `العميل: ${customer?.name || shippingAddress?.fullName || 'غير محدد'}`,
     `الهاتف: ${shippingAddress?.phone || customer?.phone || 'غير متوفر'}`,
-    `العنوان: ${(shippingAddress?.city || '')} ${(shippingAddress?.area || '')} ${(shippingAddress?.street || '')}`.trim() || 'غير متوفر',
+    `العنوان: ${`${shippingAddress?.city || ''} ${shippingAddress?.area || ''} ${shippingAddress?.street || ''}`.trim() || 'غير متوفر'}`,
     `الدفع: ${order.paymentMethod || 'غير محدد'}`,
     `الإجمالي: ${Number(order.totalPrice || 0).toFixed(2)} ج.م`,
     itemsText ? `المنتجات:\n${itemsText}` : 'المنتجات: غير متوفرة'
@@ -117,7 +107,9 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
       console.error('WhatsApp order notification failed', {
         recipient: recipient.phone,
         orderId: String(order._id || ''),
-        message: error.message
+        code: error?.code,
+        status: error?.status,
+        message: error?.message
       });
     }
   }));

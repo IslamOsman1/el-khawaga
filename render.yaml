@@ -52,12 +52,12 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         sync: false
-      - key: WHATSAPP_ACCESS_TOKEN
+      - key: TWILIO_ACCOUNT_SID
         sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
+      - key: TWILIO_AUTH_TOKEN
         sync: false
-      - key: WHATSAPP_API_VERSION
-        value: v20.0
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
 
   - type: web
     name: alwekala-web

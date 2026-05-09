@@ -124,9 +124,9 @@ Important values:
 - `VAPID_PUBLIC_KEY`
 - `VAPID_PRIVATE_KEY`
 - `VAPID_SUBJECT`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_API_VERSION`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_WHATSAPP_FROM`
 
 ### Client
 
@@ -200,9 +200,9 @@ Important Render backend values:
 - `VAPID_PUBLIC_KEY=...`
 - `VAPID_PRIVATE_KEY=...`
 - `VAPID_SUBJECT=mailto:your-email@example.com`
-- `WHATSAPP_ACCESS_TOKEN=...`
-- `WHATSAPP_PHONE_NUMBER_ID=...`
-- `WHATSAPP_API_VERSION=v20.0`
+- `TWILIO_ACCOUNT_SID=...`
+- `TWILIO_AUTH_TOKEN=...`
+- `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`
 
 Health check path:
 
@@ -239,9 +239,9 @@ Before the first production deploy, fill in the prompted environment variables i
   - `VAPID_PUBLIC_KEY`
   - `VAPID_PRIVATE_KEY`
   - `VAPID_SUBJECT`
-  - `WHATSAPP_ACCESS_TOKEN`
-  - `WHATSAPP_PHONE_NUMBER_ID`
-  - `WHATSAPP_API_VERSION`
+  - `TWILIO_ACCOUNT_SID`
+  - `TWILIO_AUTH_TOKEN`
+  - `TWILIO_WHATSAPP_FROM`
 - Frontend:
   - `VITE_API_URL`
   - `VITE_STRIPE_PUBLISHABLE_KEY`
@@ -256,7 +256,7 @@ Before the first production deploy, fill in the prompted environment variables i
 - Configure Stripe production keys
 - Configure SMTP credentials for forgot-password emails
 - Configure VAPID keys for browser push notifications
-- Configure Meta WhatsApp Cloud API if you want automatic WhatsApp order alerts
+- Configure Twilio WhatsApp if you want automatic WhatsApp order alerts
 - Add your production domain in Google app settings
 - Do not commit real `.env` files
 
@@ -302,16 +302,17 @@ Recipients:
 
 Requirements:
 
-- A configured Meta WhatsApp Cloud API number
+- A configured Twilio WhatsApp sender or Twilio WhatsApp Sandbox
 - These backend environment variables:
-  - `WHATSAPP_ACCESS_TOKEN`
-  - `WHATSAPP_PHONE_NUMBER_ID`
-  - `WHATSAPP_API_VERSION`
+  - `TWILIO_ACCOUNT_SID`
+  - `TWILIO_AUTH_TOKEN`
+  - `TWILIO_WHATSAPP_FROM`
 
 Notes:
 
 - The message is sent to the phone numbers saved in the user accounts of the admin and order employees.
 - Egyptian local numbers like `010...` are normalized automatically to international format.
+- If you use the Twilio Sandbox, the recipient numbers must join your sandbox before they can receive messages.
 - If WhatsApp sending fails, the order is still created normally and the error is only logged on the server.
 
 ## Useful Commands
