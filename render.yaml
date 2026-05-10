@@ -58,6 +58,10 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_FROM
         sync: false
+      - key: TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID
+        sync: false
+      - key: TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID
+        sync: false
 
   - type: web
     name: alwekala-web

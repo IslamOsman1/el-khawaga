@@ -127,6 +127,8 @@ Important values:
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_WHATSAPP_FROM`
+- `TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID`
+- `TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID`
 
 ### Client
 
@@ -202,7 +204,9 @@ Important Render backend values:
 - `VAPID_SUBJECT=mailto:your-email@example.com`
 - `TWILIO_ACCOUNT_SID=...`
 - `TWILIO_AUTH_TOKEN=...`
-- `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`
+- `TWILIO_WHATSAPP_FROM=whatsapp:+905358442488`
+- `TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID=HX...`
+- `TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID=HX...`
 
 Health check path:
 
@@ -242,6 +246,8 @@ Before the first production deploy, fill in the prompted environment variables i
   - `TWILIO_ACCOUNT_SID`
   - `TWILIO_AUTH_TOKEN`
   - `TWILIO_WHATSAPP_FROM`
+  - `TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID`
+  - `TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID`
 - Frontend:
   - `VITE_API_URL`
   - `VITE_STRIPE_PUBLISHABLE_KEY`
@@ -307,10 +313,28 @@ Requirements:
   - `TWILIO_ACCOUNT_SID`
   - `TWILIO_AUTH_TOKEN`
   - `TWILIO_WHATSAPP_FROM`
+  - `TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID`
+  - `TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID`
 
 Notes:
 
 - The message is sent to the phone numbers saved in the user accounts of the admin and order employees.
+- For business-initiated WhatsApp messages in production, use approved Twilio content templates with `HX...` SIDs.
+- Set `TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID` to the admin order alert template.
+- Set `TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID` to the customer order confirmation template.
+- Admin template variables:
+  - `{{1}}` order id
+  - `{{2}}` customer name
+  - `{{3}}` phone
+  - `{{4}}` total
+  - `{{5}}` payment method
+  - `{{6}}` address
+- Customer template variables:
+  - `{{1}}` customer name
+  - `{{2}}` order id
+  - `{{3}}` total
+  - `{{4}}` payment method
+  - `{{5}}` orders page URL
 - Egyptian local numbers like `010...` are normalized automatically to international format.
 - If you use the Twilio Sandbox, the recipient numbers must join your sandbox before they can receive messages.
 - If WhatsApp sending fails, the order is still created normally and the error is only logged on the server.

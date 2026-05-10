@@ -4,6 +4,8 @@ import User from '../models/User.js';
 const TWILIO_ACCOUNT_SID = String(process.env.TWILIO_ACCOUNT_SID || '').trim();
 const TWILIO_AUTH_TOKEN = String(process.env.TWILIO_AUTH_TOKEN || '').trim();
 const TWILIO_WHATSAPP_FROM = String(process.env.TWILIO_WHATSAPP_FROM || '').trim();
+const TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID = String(process.env.TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID || '').trim();
+const TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID = String(process.env.TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID || '').trim();
 
 const twilioClient = TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN
   ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
@@ -45,16 +47,32 @@ const normalizeWhatsAppPhone = (phone = '') => {
   return '';
 };
 
-const sendWhatsAppText = async ({ to, body }) => {
-  const from = TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
+const buildFromAddress = () => (
+  TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
     ? TWILIO_WHATSAPP_FROM
-    : `whatsapp:${TWILIO_WHATSAPP_FROM}`;
-  const recipient = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    : `whatsapp:${TWILIO_WHATSAPP_FROM}`
+);
 
+const buildToAddress = (to) => (
+  to.startsWith('whatsapp:')
+    ? to
+    : `whatsapp:${to}`
+);
+
+const sendWhatsAppText = async ({ to, body }) => {
   await twilioClient.messages.create({
     body,
-    from,
-    to: recipient
+    from: buildFromAddress(),
+    to: buildToAddress(to)
+  });
+};
+
+const sendWhatsAppTemplate = async ({ to, contentSid, variables = {} }) => {
+  await twilioClient.messages.create({
+    from: buildFromAddress(),
+    to: buildToAddress(to),
+    contentSid,
+    contentVariables: JSON.stringify(variables)
   });
 };
 
@@ -115,7 +133,7 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
   }
 
   const itemsText = formatOrderItems(order.orderItems || []);
-  const message = [
+  const textMessage = [
     'طلب جديد في متجر الوكالة',
     `رقم الطلب: ${order._id}`,
     `العميل: ${customer?.name || shippingAddress?.fullName || 'غير محدد'}`,
@@ -125,14 +143,34 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
     `الإجمالي: ${Number(order.totalPrice || 0).toFixed(2)} ج.م`,
     itemsText ? `المنتجات:\n${itemsText}` : 'المنتجات: غير متوفرة'
   ].join('\n');
+  const templateVariables = {
+    1: String(order?._id || ''),
+    2: String(customer?.name || shippingAddress?.fullName || 'عميل جديد'),
+    3: String(shippingAddress?.phone || customer?.phone || ''),
+    4: String(Number(order?.totalPrice || 0).toFixed(2)),
+    5: String(order?.paymentMethod || ''),
+    6: String(`${shippingAddress?.city || ''} ${shippingAddress?.area || ''} ${shippingAddress?.street || ''}`.trim())
+  };
 
   await Promise.all(recipients.map(async (recipient) => {
     try {
-      await sendWhatsAppText({ to: recipient.phone, body: message });
+      if (TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID) {
+        await sendWhatsAppTemplate({
+          to: recipient.phone,
+          contentSid: TWILIO_WHATSAPP_ORDER_ADMIN_TEMPLATE_SID,
+          variables: templateVariables
+        });
+      } else {
+        warnWhatsAppSkip('missing-admin-template-sid-falling-back-to-text', {
+          recipient: recipient.phone,
+          orderId: String(order?._id || '')
+        });
+        await sendWhatsAppText({ to: recipient.phone, body: textMessage });
+      }
     } catch (error) {
       console.error('WhatsApp order notification failed', {
         recipient: recipient.phone,
-        orderId: String(order._id || ''),
+        orderId: String(order?._id || ''),
         code: error?.code,
         status: error?.status,
         message: error?.message
@@ -163,7 +201,7 @@ export const sendCustomerOrderWhatsAppNotification = async ({ order, customer, s
   }
 
   const ordersUrl = buildCustomerOrdersUrl();
-  const messageLines = [
+  const textMessageLines = [
     `شكراً لك ${customer?.name || shippingAddress?.fullName || 'عميلنا العزيز'}`,
     'تم استلام طلبك بنجاح في متجر الوكالة.',
     `رقم الطلب: ${order._id}`,
@@ -172,18 +210,38 @@ export const sendCustomerOrderWhatsAppNotification = async ({ order, customer, s
   ];
 
   if (ordersUrl) {
-    messageLines.push(`تابع حالة طلبك من هنا: ${ordersUrl}`);
+    textMessageLines.push(`تابع حالة طلبك من هنا: ${ordersUrl}`);
   }
 
+  const templateVariables = {
+    1: String(customer?.name || shippingAddress?.fullName || 'عميلنا العزيز'),
+    2: String(order?._id || ''),
+    3: String(Number(order?.totalPrice || 0).toFixed(2)),
+    4: String(order?.paymentMethod || ''),
+    5: String(ordersUrl || '')
+  };
+
   try {
-    await sendWhatsAppText({
-      to: recipientPhone,
-      body: messageLines.join('\n')
-    });
+    if (TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID) {
+      await sendWhatsAppTemplate({
+        to: recipientPhone,
+        contentSid: TWILIO_WHATSAPP_ORDER_CUSTOMER_TEMPLATE_SID,
+        variables: templateVariables
+      });
+    } else {
+      warnWhatsAppSkip('missing-customer-template-sid-falling-back-to-text', {
+        recipient: recipientPhone,
+        orderId: String(order?._id || '')
+      });
+      await sendWhatsAppText({
+        to: recipientPhone,
+        body: textMessageLines.join('\n')
+      });
+    }
   } catch (error) {
     console.error('WhatsApp customer order notification failed', {
       recipient: recipientPhone,
-      orderId: String(order._id || ''),
+      orderId: String(order?._id || ''),
       code: error?.code,
       status: error?.status,
       message: error?.message
