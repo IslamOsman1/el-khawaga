@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
+import { sendCustomerOrderWhatsAppNotification, sendNewOrderWhatsAppNotification } from '../utils/whatsapp.js';
 import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
@@ -190,6 +191,30 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
         source: payload.discountCodeSource
       });
     }
+
+    const customer = await User.findById(payload.userId).select('name phone');
+
+    await sendNewOrderWhatsAppNotification({
+      order,
+      customer,
+      shippingAddress: payload.shippingAddress
+    }).catch((error) => {
+      console.error('WhatsApp notification error', {
+        orderId: String(order._id || ''),
+        message: error.message
+      });
+    });
+
+    await sendCustomerOrderWhatsAppNotification({
+      order,
+      customer,
+      shippingAddress: payload.shippingAddress
+    }).catch((error) => {
+      console.error('WhatsApp customer notification error', {
+        orderId: String(order._id || ''),
+        message: error.message
+      });
+    });
   }
 
   const isOwner = order.user?.toString() === req.user._id.toString();

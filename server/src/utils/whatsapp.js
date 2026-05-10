@@ -82,6 +82,12 @@ const formatOrderItems = (items = []) => (
     .join('\n')
 );
 
+const buildCustomerOrdersUrl = () => {
+  const baseUrl = String(process.env.CLIENT_URL || '').trim().replace(/\/+$/, '');
+  if (!baseUrl) return '';
+  return `${baseUrl}/orders`;
+};
+
 export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippingAddress }) => {
   if (!isWhatsAppConfigured()) return;
 
@@ -113,4 +119,39 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
       });
     }
   }));
+};
+
+export const sendCustomerOrderWhatsAppNotification = async ({ order, customer, shippingAddress }) => {
+  if (!isWhatsAppConfigured()) return;
+
+  const recipientPhone = normalizeWhatsAppPhone(customer?.phone || shippingAddress?.phone || '');
+  if (!recipientPhone) return;
+
+  const ordersUrl = buildCustomerOrdersUrl();
+  const messageLines = [
+    `شكراً لك ${customer?.name || shippingAddress?.fullName || 'عميلنا العزيز'}`,
+    'تم استلام طلبك بنجاح في متجر الوكالة.',
+    `رقم الطلب: ${order._id}`,
+    `إجمالي الطلب: ${Number(order.totalPrice || 0).toFixed(2)} ج.م`,
+    `طريقة الدفع: ${order.paymentMethod || 'غير محدد'}`
+  ];
+
+  if (ordersUrl) {
+    messageLines.push(`تابع حالة طلبك من هنا: ${ordersUrl}`);
+  }
+
+  try {
+    await sendWhatsAppText({
+      to: recipientPhone,
+      body: messageLines.join('\n')
+    });
+  } catch (error) {
+    console.error('WhatsApp customer order notification failed', {
+      recipient: recipientPhone,
+      orderId: String(order._id || ''),
+      code: error?.code,
+      status: error?.status,
+      message: error?.message
+    });
+  }
 };
