@@ -8,6 +8,12 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useWishlist } from '../context/WishlistContext.jsx';
 
+const formatMeasurement = (product) => {
+  const value = Number(product?.measurementValue || 0);
+  const unit = String(product?.measurementUnit || '').trim();
+  return value > 0 && unit ? `${value} ${unit}` : '';
+};
+
 export default function ProductDetails() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -90,6 +96,7 @@ export default function ProductDetails() {
   if (!product) return <div className="container page"><p>جاري التحميل...</p></div>;
 
   const favorite = isFavorite(product._id);
+  const measurementLabel = formatMeasurement(product);
   const reviews = Array.isArray(product.reviews)
     ? [...product.reviews].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     : [];
@@ -148,6 +155,7 @@ export default function ProductDetails() {
           </div>
 
           <div className="big-price">{product.price} ج.م <small>/ {product.unit}</small></div>
+          {measurementLabel ? <p className="muted">الحجم: {measurementLabel}</p> : null}
           <p className="muted">المخزون: {product.countInStock}</p>
 
           {product.barcode ? (

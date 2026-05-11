@@ -46,6 +46,8 @@ export const createProduct = asyncHandler(async (req, res) => {
   const data = {
     ...req.body,
     barcode: String(req.body.barcode || '').trim() || generateProductBarcode(),
+    measurementValue: Number(req.body.measurementValue || 0),
+    measurementUnit: String(req.body.measurementUnit || '').trim(),
     inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? false
   };
 
@@ -66,6 +68,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
   Object.assign(product, {
     ...req.body,
     barcode: String(req.body.barcode || '').trim(),
+    measurementValue: Number(req.body.measurementValue || 0),
+    measurementUnit: String(req.body.measurementUnit || '').trim(),
     inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? product.inAgencyCollection
   });
 

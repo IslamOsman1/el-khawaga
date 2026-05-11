@@ -42,6 +42,8 @@ const emptyProduct = {
   subcategory: '',
   barcode: '',
   unit: 'قطعة',
+  measurementValue: '',
+  measurementUnit: '',
   countInStock: '',
   featured: false,
   inAgencyCollection: false,
@@ -1036,6 +1038,8 @@ export default function AdminDashboard() {
       subcategory: product.subcategory || '',
       barcode: product.barcode || '',
       unit: product.unit,
+      measurementValue: product.measurementValue || '',
+      measurementUnit: product.measurementUnit || '',
       countInStock: product.countInStock,
       featured: product.featured,
       inAgencyCollection: product.inAgencyCollection,
@@ -1553,6 +1557,16 @@ export default function AdminDashboard() {
               </Field>
 
               <Field label="الوحدة"><input name="unit" value={productForm.unit} onChange={changeProduct} placeholder="قطعة / كجم / عبوة" /></Field>
+              <Field label="الوزن أو السعة"><input name="measurementValue" value={productForm.measurementValue || ''} onChange={changeProduct} type="number" min="0" step="0.01" placeholder="500 أو 1.5" /></Field>
+              <Field label="نوع القياس">
+                <select name="measurementUnit" value={productForm.measurementUnit || ''} onChange={changeProduct}>
+                  <option value="">بدون</option>
+                  <option value="جم">جم</option>
+                  <option value="كجم">كجم</option>
+                  <option value="مل">مل</option>
+                  <option value="لتر">لتر</option>
+                </select>
+              </Field>
               <Field label="المخزون"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
               <Field label="صورة المنتج"><input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} /></Field>
             </div>
@@ -1600,6 +1614,7 @@ export default function AdminDashboard() {
                     <th>المنتج</th>
                     <th>الفئة</th>
                     <th>القسم</th>
+                    <th>الوزن / السعة</th>
                     <th>QR</th>
                     <th>السعر</th>
                     <th>المخزون</th>
@@ -1612,6 +1627,7 @@ export default function AdminDashboard() {
                       <td>{product.name}</td>
                       <td>{product.category || '-'}</td>
                       <td>{product.subcategory || '-'}</td>
+                      <td>{Number(product.measurementValue || 0) > 0 && product.measurementUnit ? `${product.measurementValue} ${product.measurementUnit}` : '-'}</td>
                       <td>{product.barcode || '-'}</td>
                       <td>{product.price} ج.م</td>
                       <td>{product.countInStock}</td>
@@ -2758,4 +2774,8 @@ export default function AdminDashboard() {
     </main>
   );
 }
+
+
+
+
 

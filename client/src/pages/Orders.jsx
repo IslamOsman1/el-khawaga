@@ -3,16 +3,69 @@ import { Link } from 'react-router-dom';
 import {
   ClipboardList,
   Clock3,
+  Package,
+  PackageSearch,
+  Truck,
   MessageCircle,
   PackageCheck,
   ShoppingBag,
   Wallet,
+  XCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const CANCEL_WINDOW_MS = 5 * 60 * 1000;
+const ORDER_STATUS_STEPS = ['جديد', 'قيد التجهيز', 'في الطريق', 'تم التسليم'];
+const ORDER_STATUS_ICONS = {
+  جديد: Package,
+  'قيد التجهيز': PackageSearch,
+  'في الطريق': Truck,
+  'تم التسليم': PackageCheck,
+  ملغي: XCircle
+};
+
+const normalizeOrderStatus = (value = '') => String(value || '').trim();
+
+const isCancelledOrder = (status) => {
+  const normalized = normalizeOrderStatus(status);
+  return normalized === 'ملغي' || normalized.includes('ملغ');
+};
+
+const isDeliveredOrder = (status) => {
+  const normalized = normalizeOrderStatus(status);
+  return normalized === 'تم التسليم' || normalized.includes('التسليم');
+};
+
+const getOrderProgressState = (status) => {
+  const normalized = normalizeOrderStatus(status);
+
+  if (isCancelledOrder(normalized)) {
+    return {
+      cancelled: true,
+      steps: [
+        { label: 'جديد', state: 'completed' },
+        { label: 'ملغي', state: 'cancelled' }
+      ]
+    };
+  }
+
+  const directIndex = ORDER_STATUS_STEPS.findIndex((label) => label === normalized);
+  const activeStep = directIndex >= 0
+    ? directIndex
+    : isDeliveredOrder(normalized)
+      ? ORDER_STATUS_STEPS.length - 1
+      : 0;
+
+  return {
+    cancelled: false,
+    steps: ORDER_STATUS_STEPS.map((label, index) => ({
+      label,
+      state: index < activeStep ? 'completed' : index === activeStep ? 'active' : 'upcoming'
+    }))
+  };
+};
 
 export default function Orders() {
   const { refreshProfile } = useAuth();
@@ -120,9 +173,29 @@ export default function Orders() {
               const canCancel = canCancelOrder(order);
               const canEscalate = canRequestSupport(order);
               const remaining = getRemainingCancelTime(order);
+              const progress = getOrderProgressState(order.status);
 
               return (
                 <article className="order-showcase-card" key={order._id}>
+                  <div className={`order-progress-track${progress.cancelled ? ' is-cancelled' : ''}`}>
+                    {progress.steps.map((step, index) => (
+                      (() => {
+                        const StepIcon = ORDER_STATUS_ICONS[step.label] || Package;
+                        return (
+                      <div
+                        key={`${order._id}-${step.label}`}
+                        className={`order-progress-step is-${step.state}`}
+                      >
+                        <div className="order-progress-marker">
+                          <StepIcon size={16} />
+                        </div>
+                        <strong>{step.label}</strong>
+                      </div>
+                        );
+                      })()
+                    ))}
+                  </div>
+
                   <div className="order-showcase-top">
                     <div>
                       <strong>طلب #{order._id.slice(-6)}</strong>

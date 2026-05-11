@@ -4,6 +4,12 @@ import { Heart, Plus, ShoppingBasket } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 import { useWishlist } from '../context/WishlistContext.jsx';
 
+const formatMeasurement = (product) => {
+  const value = Number(product?.measurementValue || 0);
+  const unit = String(product?.measurementUnit || '').trim();
+  return value > 0 && unit ? `${value} ${unit}` : product.unit;
+};
+
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { isFavorite, toggleWishlist } = useWishlist();
@@ -21,7 +27,7 @@ export default function ProductCard({ product }) {
         <span className="stock-state">{product.countInStock > 0 ? 'متوفر' : 'نفد'}</span>
       </div>
       <Link to={`/product/${product._id}`}><h3>{product.name}</h3></Link>
-      <p>{product.unit}</p>
+      <p>{formatMeasurement(product)}</p>
       <div className="price-row">
         <strong>{product.price} ج.م</strong>
         {product.oldPrice > product.price && <del>{product.oldPrice} ج.م</del>}
