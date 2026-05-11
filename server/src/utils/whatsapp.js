@@ -166,7 +166,7 @@ export const sendNewOrderWhatsAppNotification = async ({ order, customer, shippi
     1: String(order?._id || ''),
     2: String(customer?.name || shippingAddress?.fullName || 'عميل جديد'),
     3: String(shippingAddress?.phone || customer?.phone || ''),
-    4: String(Number(order?.totalPrice || 0).toFixed(2)),
+    4: `${Number(order?.totalPrice || 0).toFixed(2)} ج.م`,
     5: String(order?.paymentMethod || ''),
     6: String(`${shippingAddress?.city || ''} ${shippingAddress?.area || ''} ${shippingAddress?.street || ''}`.trim())
   };
@@ -254,7 +254,7 @@ export const sendCustomerOrderWhatsAppNotification = async ({ order, customer, s
     '',
     `تم استلام طلبك رقم ${order._id} من Al Wekala.`,
     '',
-    `إجمالي الطلب: ${Number(order.totalPrice || 0).toFixed(2)}`,
+    `إجمالي الطلب: ${Number(order.totalPrice || 0).toFixed(2)} ج.م`,
     `طريقة الدفع: ${order.paymentMethod || 'غير محدد'}`,
     '',
     'يمكنك متابعة طلبك من هنا:'
@@ -270,7 +270,7 @@ export const sendCustomerOrderWhatsAppNotification = async ({ order, customer, s
   const templateVariables = {
     1: String(customer?.name || shippingAddress?.fullName || 'عميلنا العزيز'),
     2: String(order?._id || ''),
-    3: String(Number(order?.totalPrice || 0).toFixed(2)),
+    3: `${Number(order?.totalPrice || 0).toFixed(2)} ج.م`,
     4: String(order?.paymentMethod || ''),
     5: String(ordersUrl || '')
   };
