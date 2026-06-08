@@ -41,7 +41,7 @@ export default function CompletePasswordPage() {
       <p className="muted">تم تسجيل دخولك بواسطة Google. يجب إنشاء كلمة مرور قبل متابعة استخدام الموقع.</p>
 
       <div className="password-setup-user">
-        <strong>{user?.name || 'مستخدم الوكالة'}</strong>
+        <strong>{user?.name || 'مستخدم الموقع'}</strong>
         <span>{user?.email || ''}</span>
       </div>
 

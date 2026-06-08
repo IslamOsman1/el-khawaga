@@ -4,10 +4,10 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: 'Al Wekala', body: event.data?.text?.() || '' };
+    payload = { title: 'Burger El Khawaga', body: event.data?.text?.() || '' };
   }
 
-  const title = payload.title || 'Al Wekala';
+  const title = payload.title || 'Burger El Khawaga';
   const options = {
     body: payload.body || '',
     tag: payload.tag || undefined,

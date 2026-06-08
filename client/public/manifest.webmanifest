@@ -1,0 +1,23 @@
+{
+  "name": "Burger El Khawaga",
+  "short_name": "El Khawaga",
+  "description": "سماش برجر وفرايد تشيكن ووجبات سريعة بطلب أونلاين واضح وسريع.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050403",
+  "theme_color": "#100c09",
+  "icons": [
+    {
+      "src": "/favicon1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon1.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
