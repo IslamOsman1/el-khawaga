@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: alwekala-api
+    name: el-khawaga-api
     runtime: node
     rootDir: server
     plan: free
@@ -64,7 +64,7 @@ services:
         sync: false
 
   - type: web
-    name: alwekala-web
+    name: el-khawaga-web
     runtime: static
     rootDir: client
     plan: free
