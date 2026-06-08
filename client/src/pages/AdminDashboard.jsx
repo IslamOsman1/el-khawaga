@@ -1555,7 +1555,7 @@ export default function AdminDashboard() {
                   <option value="لتر">لتر</option>
                 </select>
               </Field>
-              <Field label="الكمية المتاحة"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
+              <Field label="الكمية المتاحة (اختياري)"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
               <Field label="صورة الوجبة / المنتج"><input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} /></Field>
             </div>
 
