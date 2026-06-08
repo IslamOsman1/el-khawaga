@@ -42,7 +42,7 @@ const emptyProduct = {
   unit: 'وجبة',
   measurementValue: '',
   measurementUnit: '',
-  countInStock: '',
+  countInStock: 0,
   featured: false,
   inAgencyCollection: false,
   isDeal: false
@@ -988,7 +988,13 @@ export default function AdminDashboard() {
   const submitProduct = async (event) => {
     event.preventDefault();
     const formData = new FormData();
-    Object.entries(productForm).forEach(([key, value]) => formData.append(key, value));
+    Object.entries({
+      ...productForm,
+      countInStock: Number(productForm.countInStock || 0),
+      price: Number(productForm.price || 0),
+      oldPrice: Number(productForm.oldPrice || 0),
+      measurementValue: Number(productForm.measurementValue || 0)
+    }).forEach(([key, value]) => formData.append(key, value));
     if (image) formData.append('image', image);
 
     try {

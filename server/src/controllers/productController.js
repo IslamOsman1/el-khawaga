@@ -45,6 +45,9 @@ export const getCategories = asyncHandler(async (_req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
   const data = {
     ...req.body,
+    price: Number(req.body.price || 0),
+    oldPrice: Number(req.body.oldPrice || 0),
+    countInStock: Number(req.body.countInStock || 0),
     barcode: String(req.body.barcode || '').trim() || generateProductBarcode(),
     measurementValue: Number(req.body.measurementValue || 0),
     measurementUnit: String(req.body.measurementUnit || '').trim(),
@@ -73,6 +76,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
   Object.assign(product, {
     ...req.body,
+    price: Number(req.body.price || 0),
+    oldPrice: Number(req.body.oldPrice || 0),
+    countInStock: Number(req.body.countInStock || 0),
     barcode: String(req.body.barcode || '').trim(),
     measurementValue: Number(req.body.measurementValue || 0),
     measurementUnit: String(req.body.measurementUnit || '').trim(),
