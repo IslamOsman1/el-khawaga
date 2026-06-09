@@ -51,6 +51,16 @@ const buildOrderItems = async (orderItems) => {
   });
 };
 
+const adjustTrackedStock = async (productId, qtyDelta) => {
+  await Product.updateOne(
+    {
+      _id: productId,
+      countInStock: { $ne: null }
+    },
+    { $inc: { countInStock: qtyDelta } }
+  );
+};
+
 const consumeLoyaltyPoints = async (userId, order, usedPoints) => {
   if (!Number(usedPoints || 0)) return;
 
@@ -181,7 +191,7 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
     });
 
     for (const item of refreshedItems) {
-      await Product.updateOne({ _id: item.product }, { $inc: { countInStock: -item.qty } });
+      await adjustTrackedStock(item.product, -Number(item.qty || 0));
     }
 
     await consumeLoyaltyPoints(payload.userId, order, payload.loyaltyPointsUsed);

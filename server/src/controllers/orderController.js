@@ -35,6 +35,16 @@ const buildOrderItems = async (orderItems) => {
   });
 };
 
+const adjustTrackedStock = async (productId, qtyDelta) => {
+  await Product.updateOne(
+    {
+      _id: productId,
+      countInStock: { $ne: null }
+    },
+    { $inc: { countInStock: qtyDelta } }
+  );
+};
+
 const canUserCancelOrder = (order) => {
   if (!order) return false;
   if (order.status !== 'جديد') return false;
@@ -130,7 +140,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   });
 
   for (const item of items) {
-    await Product.updateOne({ _id: item.product }, { $inc: { countInStock: -item.qty } });
+    await adjustTrackedStock(item.product, -Number(item.qty || 0));
   }
 
   await consumeLoyaltyPoints(req.user._id, order, pricing.loyaltyPointsUsed);
@@ -226,7 +236,7 @@ export const cancelMyOrder = asyncHandler(async (req, res) => {
   order.status = 'ملغي';
 
   for (const item of order.orderItems) {
-    await Product.updateOne({ _id: item.product }, { $inc: { countInStock: item.qty } });
+    await adjustTrackedStock(item.product, Number(item.qty || 0));
   }
 
   await restoreUsedLoyaltyPoints(order);
