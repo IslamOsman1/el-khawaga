@@ -7,6 +7,33 @@ import { sendCustomerOrderWhatsAppNotification, sendNewOrderWhatsAppNotification
 import { ensureStoreSettings } from '../utils/storeSettings.js';
 import { calculateOrderPricing, incrementDiscountCodeUsage } from '../utils/pricing.js';
 
+const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const resolveSelectedAddOns = (product, selectedAddOns = []) => {
+  if (!Array.isArray(selectedAddOns) || !selectedAddOns.length) return [];
+
+  const availableAddOns = new Map(
+    (Array.isArray(product?.addOns) ? product.addOns : [])
+      .filter((entry) => entry?.active !== false)
+      .map((entry) => [String(entry._id), entry])
+  );
+
+  return selectedAddOns
+    .map((entry) => {
+      const target = availableAddOns.get(String(entry?._id || entry?.addOnId || ''));
+      const qty = Math.max(1, Number(entry?.qty || 1));
+      if (!target) return null;
+      return {
+        _id: target._id,
+        name: target.name,
+        qty,
+        price: Number(target.price || 0),
+        image: target.image?.url || ''
+      };
+    })
+    .filter(Boolean);
+};
+
 const getStripeClient = async () => {
   const settings = await ensureStoreSettings();
   const secretKey = settings.payment?.stripeSecretKey || process.env.STRIPE_SECRET_KEY;
@@ -41,12 +68,19 @@ const buildOrderItems = async (orderItems) => {
       throw new Error(`الكمية غير متاحة: ${product.name}`);
     }
 
+    const selectedAddOns = resolveSelectedAddOns(product, item.selectedAddOns);
+    const addOnsPrice = roundMoney(selectedAddOns.reduce((sum, entry) => sum + (Number(entry.price || 0) * Number(entry.qty || 1)), 0));
+    const basePrice = Number(product.price || 0);
+
     return {
       product: product._id,
       name: product.name,
       qty: item.qty,
       image: product.image?.url,
-      price: product.price
+      basePrice,
+      addOnsPrice,
+      selectedAddOns,
+      price: roundMoney(basePrice + addOnsPrice)
     };
   });
 };
@@ -167,7 +201,8 @@ export const verifyStripeCheckoutSession = asyncHandler(async (req, res) => {
     const refreshedItems = await buildOrderItems(
       payload.items.map((item) => ({
         product: item.product.toString(),
-        qty: item.qty
+        qty: item.qty,
+        selectedAddOns: item.selectedAddOns || []
       }))
     );
 

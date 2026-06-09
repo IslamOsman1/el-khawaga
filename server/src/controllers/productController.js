@@ -6,6 +6,37 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const generateProductBarcode = () => `PRD-${Date.now().toString(36).toUpperCase()}`;
+const normalizeProductAddOns = (rawAddOns) => {
+  let parsedAddOns = rawAddOns;
+
+  if (typeof parsedAddOns === 'string') {
+    try {
+      parsedAddOns = JSON.parse(parsedAddOns || '[]');
+    } catch {
+      parsedAddOns = [];
+    }
+  }
+
+  if (!Array.isArray(parsedAddOns)) return [];
+
+  return parsedAddOns
+    .map((entry) => {
+      const name = String(entry?.name || '').trim();
+      if (!name) return null;
+
+      const normalizedPrice = Number(entry?.price || 0);
+      return {
+        ...(entry?._id ? { _id: entry._id } : {}),
+        name,
+        price: Number.isFinite(normalizedPrice) ? Math.max(0, normalizedPrice) : 0,
+        image: {
+          url: String(entry?.image?.url || entry?.imageUrl || '').trim()
+        },
+        active: entry?.active === false || entry?.active === 'false' ? false : true
+      };
+    })
+    .filter(Boolean);
+};
 
 export const getProducts = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
@@ -52,7 +83,8 @@ export const createProduct = asyncHandler(async (req, res) => {
     barcode: String(req.body.barcode || '').trim() || generateProductBarcode(),
     measurementValue: Number(req.body.measurementValue || 0),
     measurementUnit: String(req.body.measurementUnit || '').trim(),
-    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? false
+    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? false,
+    addOns: normalizeProductAddOns(req.body.addOns)
   };
 
   let image = { url: '', publicId: '' };
@@ -84,7 +116,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
     barcode: String(req.body.barcode || '').trim(),
     measurementValue: Number(req.body.measurementValue || 0),
     measurementUnit: String(req.body.measurementUnit || '').trim(),
-    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? product.inAgencyCollection
+    inAgencyCollection: req.body.inAgencyCollection ?? req.body.featured ?? product.inAgencyCollection,
+    addOns: normalizeProductAddOns(req.body.addOns)
   });
 
   if (req.file) {

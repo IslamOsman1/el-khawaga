@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Heart, Printer, QrCode, Star } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, Heart, Plus, Printer, QrCode, Star } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -21,6 +21,7 @@ export default function ProductDetails() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [qty, setQty] = useState(1);
+  const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [qrImage, setQrImage] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -28,10 +29,19 @@ export default function ProductDetails() {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const { isFavorite, toggleWishlist } = useWishlist();
+  const selectedAddOnsTotal = useMemo(
+    () => selectedAddOns.reduce((sum, entry) => sum + (Number(entry.price || 0) * Number(entry.qty || 1)), 0),
+    [selectedAddOns]
+  );
 
   useEffect(() => {
     api.get(`/products/${id}`).then(({ data }) => setProduct(data));
   }, [id]);
+
+  useEffect(() => {
+    setQty(1);
+    setSelectedAddOns([]);
+  }, [product?._id]);
 
   useEffect(() => {
     const barcode = String(product?.barcode || '').trim();
@@ -106,6 +116,33 @@ export default function ProductDetails() {
     ? [...product.reviews].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     : [];
   const currentUserReview = reviews.find((entry) => (entry.user?._id || entry.user) === user?.id);
+  const availableAddOns = Array.isArray(product.addOns) ? product.addOns.filter((entry) => entry?.active !== false) : [];
+  const finalUnitPrice = Number((Number(product.price || 0) + selectedAddOnsTotal).toFixed(2));
+
+  const incrementAddOn = (addOn) => {
+    setSelectedAddOns((current) => (
+      current.some((entry) => entry._id === addOn._id)
+        ? current.map((entry) => (
+          entry._id === addOn._id ? { ...entry, qty: Number(entry.qty || 1) + 1 } : entry
+        ))
+        : [
+          ...current,
+          {
+            _id: addOn._id,
+            name: addOn.name,
+            qty: 1,
+            price: Number(addOn.price || 0),
+            image: { url: addOn.image?.url || '' }
+          }
+        ]
+    ));
+  };
+
+  const decrementAddOn = (addOnId) => {
+    setSelectedAddOns((current) => current
+      .map((entry) => entry._id === addOnId ? { ...entry, qty: Math.max(0, Number(entry.qty || 1) - 1) } : entry)
+      .filter((entry) => Number(entry.qty || 0) > 0));
+  };
 
   const submitReview = async (event) => {
     event.preventDefault();
@@ -159,7 +196,8 @@ export default function ProductDetails() {
             <span>{product.numReviews || 0} تقييم</span>
           </div>
 
-          <div className="big-price">{product.price} ج.م <small>/ {product.unit}</small></div>
+          <div className="big-price">{finalUnitPrice} ج.م <small>/ {product.unit}</small></div>
+          {selectedAddOns.length ? <p className="muted">سعر الإضافات المختارة: {selectedAddOnsTotal} ج.م</p> : null}
           {measurementLabel ? <p className="muted">الحجم: {measurementLabel}</p> : null}
           <p className="muted">المخزون: {trackedStock ? product.countInStock : 'غير محدد'}</p>
 
@@ -182,9 +220,50 @@ export default function ProductDetails() {
             </div>
           ) : null}
 
+          {availableAddOns.length ? (
+            <section className="product-addons-panel">
+              <div className="section-head compact">
+                <div>
+                  <h2>إضافات المنتج</h2>
+                  <span>اختر الإضافات التي تريدها وسيتم تحديث السعر فورًا.</span>
+                </div>
+              </div>
+
+              <div className="product-addons-grid">
+                {availableAddOns.map((addOn) => {
+                  const selectedEntry = selectedAddOns.find((entry) => entry._id === addOn._id);
+                  const selectedQty = Number(selectedEntry?.qty || 0);
+                  return (
+                    <div key={addOn._id} className={`product-addon-card${selectedQty > 0 ? ' selected' : ''}`}>
+                      <div className="product-addon-thumb">
+                        {addOn.image?.url ? <img src={addOn.image.url} alt={addOn.name} loading="lazy" decoding="async" sizes="56px" /> : <span>{addOn.name.slice(0, 1)}</span>}
+                      </div>
+                      <div className="product-addon-copy">
+                        <strong>{addOn.name}</strong>
+                        <span>{Number(addOn.price || 0)} ج.م</span>
+                        {selectedQty > 0 ? <small>تم اختيار {selectedQty}</small> : null}
+                      </div>
+                      <div className="product-addon-actions">
+                        {selectedQty > 0 ? (
+                          <button type="button" className="product-addon-stepper" onClick={() => decrementAddOn(addOn._id)} aria-label={`تقليل ${addOn.name}`}>
+                            -
+                          </button>
+                        ) : null}
+                        <span className="product-addon-qty">{selectedQty > 0 ? selectedQty : <Check size={14} className="product-addon-qty-icon" />}</span>
+                        <button type="button" className="product-addon-stepper plus" onClick={() => incrementAddOn(addOn)} aria-label={`زيادة ${addOn.name}`}>
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <input type="number" min="1" max={trackedStock ? product.countInStock : undefined} value={qty} onChange={(event) => setQty(event.target.value)} />
           <div className="detail-actions">
-            <button className="primary-btn" onClick={() => addToCart(product, Number(qty))} disabled={outOfStock}>أضف للسلة</button>
+            <button className="primary-btn" onClick={() => addToCart(product, Number(qty), selectedAddOns)} disabled={outOfStock}>أضف للسلة</button>
             <button type="button" className={`wishlist-detail-btn${favorite ? ' active' : ''}`} onClick={() => toggleWishlist(product)}>
               <Heart size={18} /> {favorite ? 'في المفضلة' : 'أضف للمفضلة'}
             </button>

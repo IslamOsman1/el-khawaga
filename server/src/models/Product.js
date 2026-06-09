@@ -7,6 +7,15 @@ const reviewSchema = new mongoose.Schema({
   comment: { type: String, required: true, trim: true }
 }, { timestamps: true });
 
+const productAddOnSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  price: { type: Number, required: true, min: 0, default: 0 },
+  image: {
+    url: { type: String, default: '' }
+  },
+  active: { type: Boolean, default: true }
+}, { _id: true });
+
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
@@ -27,6 +36,7 @@ const productSchema = new mongoose.Schema({
     url: { type: String, default: '' },
     publicId: { type: String, default: '' }
   },
+  addOns: { type: [productAddOnSchema], default: [] },
   reviews: { type: [reviewSchema], default: [] },
   rating: { type: Number, default: 0 },
   numReviews: { type: Number, default: 0 }

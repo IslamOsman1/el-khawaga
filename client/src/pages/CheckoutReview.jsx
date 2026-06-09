@@ -65,7 +65,11 @@ export default function CheckoutReview() {
 
     try {
       const payload = {
-        orderItems: items.map((item) => ({ product: item._id, qty: item.qty })),
+        orderItems: items.map((item) => ({
+          product: item._id,
+          qty: item.qty,
+          selectedAddOns: item.selectedAddOns || []
+        })),
         shippingAddress: draft.shippingAddress,
         paymentMethod: draft.paymentMethod,
         discountCode: draft.discountCode
@@ -129,8 +133,15 @@ export default function CheckoutReview() {
             <strong>المنتجات</strong>
             <div className="checkout-review-items">
               {items.map((item) => (
-                <div className="checkout-review-item" key={item._id}>
-                  <span>{item.name}</span>
+                <div className="checkout-review-item" key={item.cartKey || item._id}>
+                  <div className="checkout-review-item-copy">
+                    <span>{item.name}</span>
+                    {item.selectedAddOns?.length ? (
+                      <small className="checkout-review-addons">
+                        الإضافات: {item.selectedAddOns.map((entry) => `${entry.name} × ${entry.qty || 1}`).join(' - ')}
+                      </small>
+                    ) : null}
+                  </div>
                   <small>{item.qty} × {item.price} ج.م</small>
                 </div>
               ))}

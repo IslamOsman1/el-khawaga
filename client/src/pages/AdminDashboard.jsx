@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Package,
   Palette,
+  Plus,
   Printer,
   Save,
   Search,
@@ -17,6 +18,7 @@ import {
   Store,
   Tag,
   Truck,
+  Trash2,
   Undo2,
   Users,
   QrCode,
@@ -43,10 +45,19 @@ const emptyProduct = {
   measurementValue: '',
   measurementUnit: '',
   countInStock: '',
+  addOns: [],
   featured: false,
   inAgencyCollection: false,
   isDeal: false
 };
+
+const emptyProductAddOn = () => ({
+  _id: '',
+  name: '',
+  price: '',
+  imageUrl: '',
+  active: true
+});
 
 const emptyDiscountForm = {
   code: '',
@@ -888,6 +899,29 @@ export default function AdminDashboard() {
     });
   };
 
+  const addProductAddOn = () => {
+    setProductForm((current) => ({
+      ...current,
+      addOns: [...(current.addOns || []), emptyProductAddOn()]
+    }));
+  };
+
+  const changeProductAddOn = (index, key, value) => {
+    setProductForm((current) => ({
+      ...current,
+      addOns: (current.addOns || []).map((entry, entryIndex) => (
+        entryIndex === index ? { ...entry, [key]: value } : entry
+      ))
+    }));
+  };
+
+  const removeProductAddOn = (index) => {
+    setProductForm((current) => ({
+      ...current,
+      addOns: (current.addOns || []).filter((_, entryIndex) => entryIndex !== index)
+    }));
+  };
+
   const ensureProductBarcode = () => {
     setProductForm((current) => {
       if (String(current.barcode || '').trim()) return current;
@@ -981,11 +1015,21 @@ export default function AdminDashboard() {
   const submitProduct = async (event) => {
     event.preventDefault();
     const formData = new FormData();
+    const normalizedAddOns = (productForm.addOns || [])
+      .map((entry) => ({
+        ...(entry._id ? { _id: entry._id } : {}),
+        name: String(entry.name || '').trim(),
+        price: Number(entry.price || 0),
+        imageUrl: String(entry.imageUrl || '').trim(),
+        active: entry.active !== false
+      }))
+      .filter((entry) => entry.name);
     const payload = {
       ...productForm,
       price: Number(productForm.price || 0),
       oldPrice: Number(productForm.oldPrice || 0),
-      measurementValue: Number(productForm.measurementValue || 0)
+      measurementValue: Number(productForm.measurementValue || 0),
+      addOns: JSON.stringify(normalizedAddOns)
     };
 
     if (String(productForm.countInStock).trim() !== '') {
@@ -1030,6 +1074,13 @@ export default function AdminDashboard() {
       measurementValue: product.measurementValue || '',
       measurementUnit: product.measurementUnit || '',
       countInStock: product.countInStock,
+      addOns: Array.isArray(product.addOns) ? product.addOns.map((entry) => ({
+        _id: entry._id || '',
+        name: entry.name || '',
+        price: entry.price ?? '',
+        imageUrl: entry.image?.url || '',
+        active: entry.active !== false
+      })) : [],
       featured: product.featured,
       inAgencyCollection: product.inAgencyCollection,
       isDeal: product.isDeal
@@ -1551,6 +1602,67 @@ export default function AdminDashboard() {
               </Field>
               <Field label="الكمية المتاحة (اختياري)"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
               <Field label="صورة الوجبة / المنتج"><input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} /></Field>
+            </div>
+
+            <div className="admin-setting-card nested product-addons-admin-card">
+              <div className="admin-setting-card-head">
+                <Package size={18} />
+                <strong>إضافات المنتج</strong>
+              </div>
+              <p className="muted">أضف اختيارات إضافية تظهر للعميل داخل صفحة المنتج وقت الطلب.</p>
+
+              <div className="product-addons-admin-list">
+                {(productForm.addOns || []).map((addOn, index) => (
+                  <div key={addOn._id || `addon-${index}`} className="product-addon-admin-item">
+                    <div className="product-addon-admin-grid">
+                      <Field label="اسم الإضافة">
+                        <input
+                          value={addOn.name}
+                          onChange={(event) => changeProductAddOn(index, 'name', event.target.value)}
+                          placeholder="مثال: صوص جبنة"
+                        />
+                      </Field>
+                      <Field label="السعر">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={addOn.price}
+                          onChange={(event) => changeProductAddOn(index, 'price', event.target.value)}
+                          placeholder="0"
+                        />
+                      </Field>
+                      <Field label="رابط الصورة الاختياري">
+                        <input
+                          value={addOn.imageUrl}
+                          onChange={(event) => changeProductAddOn(index, 'imageUrl', event.target.value)}
+                          placeholder="https://..."
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="product-addon-admin-actions">
+                      <label className="admin-toggle-pill">
+                        <input
+                          type="checkbox"
+                          checked={addOn.active !== false}
+                          onChange={(event) => changeProductAddOn(index, 'active', event.target.checked)}
+                        />
+                        {addOn.active !== false ? 'مفعلة' : 'متوقفة'}
+                      </label>
+                      <button type="button" className="table-action-btn danger" onClick={() => removeProductAddOn(index)}>
+                        <Trash2 size={14} />
+                        <span>حذف الإضافة</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" className="secondary-btn product-addon-admin-add-btn" onClick={addProductAddOn}>
+                <Plus size={16} />
+                <span>إضافة اختيار جديد</span>
+              </button>
             </div>
 
             <Field label="كود المنتج / QR">

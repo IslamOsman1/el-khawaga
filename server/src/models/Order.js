@@ -5,6 +5,15 @@ const orderItemSchema = new mongoose.Schema({
   name: String,
   qty: { type: Number, required: true },
   image: String,
+  basePrice: { type: Number, required: true, default: 0 },
+  addOnsPrice: { type: Number, default: 0 },
+  selectedAddOns: [{
+    _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    name: { type: String, required: true, trim: true },
+    qty: { type: Number, required: true, min: 1, default: 1 },
+    price: { type: Number, required: true, min: 0, default: 0 },
+    image: { type: String, default: '' }
+  }],
   price: { type: Number, required: true }
 }, { _id: false });
 
