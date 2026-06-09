@@ -44,6 +44,7 @@ const emptyProduct = {
   unit: 'وجبة',
   measurementValue: '',
   measurementUnit: '',
+  trackStock: false,
   countInStock: '',
   addOns: [],
   featured: false,
@@ -895,6 +896,7 @@ export default function AdminDashboard() {
     setProductForm((current) => {
       const next = { ...current, [name]: type === 'checkbox' ? checked : value };
       if (name === 'category') next.subcategory = '';
+      if (name === 'trackStock' && !checked) next.countInStock = '';
       return next;
     });
   };
@@ -1032,7 +1034,9 @@ export default function AdminDashboard() {
       addOns: JSON.stringify(normalizedAddOns)
     };
 
-    if (String(productForm.countInStock).trim() !== '') {
+    delete payload.trackStock;
+
+    if (productForm.trackStock && String(productForm.countInStock).trim() !== '') {
       payload.countInStock = Number(productForm.countInStock);
     } else {
       delete payload.countInStock;
@@ -1073,6 +1077,7 @@ export default function AdminDashboard() {
       unit: product.unit,
       measurementValue: product.measurementValue || '',
       measurementUnit: product.measurementUnit || '',
+      trackStock: product.countInStock !== null && product.countInStock !== undefined && String(product.countInStock) !== '',
       countInStock: product.countInStock,
       addOns: Array.isArray(product.addOns) ? product.addOns.map((entry) => ({
         _id: entry._id || '',
@@ -1600,7 +1605,11 @@ export default function AdminDashboard() {
                   <option value="لتر">لتر</option>
                 </select>
               </Field>
-              <Field label="الكمية المتاحة (اختياري)"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" /></Field>
+              <label className="admin-toggle-pill">
+                <input type="checkbox" name="trackStock" checked={!!productForm.trackStock} onChange={changeProduct} />
+                تفعيل الكمية المتاحة لهذا المنتج
+              </label>
+              <Field label="الكمية المتاحة (اختياري)"><input name="countInStock" value={productForm.countInStock} onChange={changeProduct} type="number" placeholder="0" disabled={!productForm.trackStock} /></Field>
               <Field label="صورة الوجبة / المنتج"><input type="file" accept="image/*" onChange={(event) => setImage(event.target.files?.[0] || null)} /></Field>
             </div>
 
